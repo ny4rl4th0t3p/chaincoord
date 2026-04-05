@@ -1,0 +1,143 @@
+// Package services contain the application-layer use cases.
+// Each service orchestrates domain objects and ports — it contains no business rules
+// and no I/O implementations.
+package services
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/ny4rl4th0t3p/chaincoord/internal/application/ports"
+	"github.com/ny4rl4th0t3p/chaincoord/pkg/canonicaljson"
+)
+
+// AuthService handles the challenge-response authentication flow.
+type AuthService struct {
+	challenges ports.ChallengeStore
+	sessions   ports.SessionStore
+	nonces     ports.NonceStore
+	verifier   ports.SignatureVerifier
+}
+
+func NewAuthService(
+	challenges ports.ChallengeStore,
+	sessions ports.SessionStore,
+	nonces ports.NonceStore,
+	verifier ports.SignatureVerifier,
+) *AuthService {
+	return &AuthService{
+		challenges: challenges,
+		sessions:   sessions,
+		nonces:     nonces,
+		verifier:   verifier,
+	}
+}
+
+// IssueChallenge generates a short-lived challenge string for the given operator address.
+func (s *AuthService) IssueChallenge(ctx context.Context, operatorAddr string) (string, error) {
+	if operatorAddr == "" {
+		return "", fmt.Errorf("operator address is required")
+	}
+	return s.challenges.Issue(ctx, operatorAddr)
+}
+
+// VerifyChallengeInput is the payload the validator signs to authenticate.
+//
+// # Signing contract (cross-language)
+//
+// The bytes that are signed are produced by canonicaljson.MarshalForSigning applied to this
+// struct. That function strips "signature", "nonce", and "pubkey_b64", then sorts the
+// remaining keys lexicographically. The resulting canonical JSON is always:
+//
+//	{"challenge":"<value>","operator_address":"<value>","timestamp":"<value>"}
+//
+// The TypeScript web client MUST produce byte-identical output before calling
+// signArbitrary. Field order must be: challenge → operator_address → timestamp.
+// No whitespace. Timestamp must be RFC 3339 UTC with second precision (e.g. "2026-01-01T00:00:00Z").
+// See the contract test in auth_contract_test.go for a known-good example.
+type VerifyChallengeInput struct {
+	OperatorAddress string `json:"operator_address"`
+	// PubKeyB64 is the caller's secp256k1 compressed public key (33 bytes, base64-encoded).
+	// Required so the server can verify the signature — bech32 addresses are hashes
+	// and the public key cannot be recovered from them.
+	// Stripped before signing — not included in the canonical bytes.
+	PubKeyB64 string `json:"pubkey_b64"`
+	Challenge string `json:"challenge"`
+	// Nonce is stripped before signing — not included in the canonical bytes.
+	Nonce     string `json:"nonce"`
+	Timestamp string `json:"timestamp"`
+	// Signature is stripped before signing — not included in the canonical bytes.
+	Signature string `json:"signature"`
+}
+
+// VerifyChallenge validates a signed challenge response and issues a session token.
+func (s *AuthService) VerifyChallenge(ctx context.Context, input VerifyChallengeInput) (token string, err error) {
+	if input.OperatorAddress == "" {
+		return "", fmt.Errorf("operator_address is required")
+	}
+
+	// Replay protection: consume the nonce before anything else.
+	if err := s.nonces.Consume(ctx, input.OperatorAddress, input.Nonce); err != nil {
+		return "", fmt.Errorf("auth: nonce rejected: %w", err)
+	}
+	if err := validateTimestamp(input.Timestamp); err != nil {
+		return "", fmt.Errorf("auth: %w", err)
+	}
+
+	// Retrieve and consume the challenge (one-time use).
+	expected, err := s.challenges.Consume(ctx, input.OperatorAddress)
+	if err != nil {
+		return "", fmt.Errorf("auth: challenge not found or expired: %w", err)
+	}
+	if input.Challenge != expected {
+		return "", fmt.Errorf("auth: challenge mismatch")
+	}
+
+	// Verify the signature over canonical JSON of the payload (minus signature field).
+	message, err := canonicaljson.MarshalForSigning(input)
+	if err != nil {
+		return "", fmt.Errorf("auth: failed to produce signing bytes: %w", err)
+	}
+	sigBytes, err := decodeBase64Sig(input.Signature)
+	if err != nil {
+		return "", fmt.Errorf("auth: invalid signature encoding: %w", err)
+	}
+	if err := s.verifier.Verify(input.OperatorAddress, input.PubKeyB64, message, sigBytes); err != nil {
+		return "", fmt.Errorf("auth: signature verification failed: %w", err)
+	}
+
+	return s.sessions.Issue(ctx, input.OperatorAddress)
+}
+
+// RevokeSession invalidates a session token.
+func (s *AuthService) RevokeSession(ctx context.Context, token string) error {
+	return s.sessions.Revoke(ctx, token)
+}
+
+// RevokeAllSessions invalidates all tokens currently held by the given operator.
+// Used by the operator themselves (DELETE /auth/sessions/all) and by admins
+// (DELETE /admin/sessions/{address}).
+func (s *AuthService) RevokeAllSessions(ctx context.Context, operatorAddr string) error {
+	return s.sessions.RevokeAllForOperator(ctx, operatorAddr)
+}
+
+// SessionInfo holds metadata about the caller's current session token.
+type SessionInfo struct {
+	OperatorAddress string
+	ExpiresAt       time.Time
+}
+
+// GetSessionInfo returns metadata about the supplied token without consuming it.
+func (s *AuthService) GetSessionInfo(token string) (SessionInfo, error) {
+	addr, exp, err := s.sessions.ParseClaims(token)
+	if err != nil {
+		return SessionInfo{}, err
+	}
+	return SessionInfo{OperatorAddress: addr, ExpiresAt: exp}, nil
+}
+
+// ValidateSession checks a session token and returns the operator address.
+func (s *AuthService) ValidateSession(ctx context.Context, token string) (string, error) {
+	return s.sessions.Validate(ctx, token)
+}

@@ -1,0 +1,108 @@
+services:
+
+  coordd:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: [ "coordd", "serve" ]
+    environment:
+      COORD_LISTEN_ADDR: ":8080"
+      COORD_DB_PATH: "/data/coord.db"
+      COORD_AUDIT_LOG_PATH: "/data/audit.jsonl"
+      COORD_GENESIS_PATH: "/data/genesis"
+      COORD_LOG_LEVEL: "info"
+      COORD_CORS_ORIGINS: ""
+      COORD_INSECURE_NO_TLS: "true"    # TLS is terminated by the upstream proxy/ingress
+      COORD_INSECURE_NO_SSRF_CHECK: "true"  # smoke-test: val* hostnames are internal Docker names
+      COORD_LAUNCH_POLICY: "open"      # any authenticated address may create a launch
+      COORD_GENESIS_HOST_MODE: "true"  # smoke test uploads genesis bytes directly
+      # Keys are injected via Docker secrets rather than plain env vars so they
+      # do not appear in process listings, container inspection, or CI logs.
+      COORD_AUDIT_PRIVATE_KEY_FILE: "/run/secrets/audit_key"
+      COORD_JWT_PRIVATE_KEY_FILE: "/run/secrets/jwt_key"
+    secrets:
+      - audit_key
+      - jwt_key
+    volumes:
+      - coordd-data:/data
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:8080/healthz" ]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  val1:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    entrypoint: [ "/validator-entrypoint.sh" ]
+    environment:
+      VALIDATOR_NUM: "1"
+    volumes:
+      - gaia-shared:/gaia
+      - ./validator-entrypoint.sh:/validator-entrypoint.sh:ro
+
+  val2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    entrypoint: [ "/validator-entrypoint.sh" ]
+    environment:
+      VALIDATOR_NUM: "2"
+    volumes:
+      - gaia-shared:/gaia
+      - ./validator-entrypoint.sh:/validator-entrypoint.sh:ro
+
+  val3:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    entrypoint: [ "/validator-entrypoint.sh" ]
+    environment:
+      VALIDATOR_NUM: "3"
+    volumes:
+      - gaia-shared:/gaia
+      - ./validator-entrypoint.sh:/validator-entrypoint.sh:ro
+
+  val4:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    entrypoint: [ "/validator-entrypoint.sh" ]
+    environment:
+      VALIDATOR_NUM: "4"
+    volumes:
+      - gaia-shared:/gaia
+      - ./validator-entrypoint.sh:/validator-entrypoint.sh:ro
+
+  smoke-test:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: [ "/smoke-test.sh" ]
+    depends_on:
+      coordd:
+        condition: service_healthy
+    volumes:
+      - ./smoke-test.sh:/smoke-test.sh:ro
+      - ./launch-config.yaml:/launch-config.yaml:ro
+      - gaia-shared:/gaia
+    environment:
+      COORD_SERVER: "http://coordd:8080"
+      CHAIN_ID: "gaia-smoke-1"
+      GAIA_SHARED: "/gaia"
+
+volumes:
+  coordd-data:
+  gaia-shared:
+
+# Secret files must exist on the host before running docker compose up.
+# Create them with:
+#   coordd keygen > secrets/audit_key
+#   coordd keygen > secrets/jwt_key
+#   chmod 600 secrets/audit_key secrets/jwt_key
+secrets:
+  audit_key:
+    file: ./secrets/audit_key
+  jwt_key:
+    file: ./secrets/jwt_key

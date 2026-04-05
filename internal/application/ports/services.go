@@ -1,0 +1,138 @@
+package ports
+
+import (
+	"context"
+	"encoding/json"
+	"time"
+
+	"github.com/ny4rl4th0t3p/chaincoord/internal/domain"
+)
+
+// Transactor runs fn inside a single database transaction.
+// If fn returns an error the transaction is rolled back; otherwise it is committed.
+// Repositories that receive a context carrying an active transaction must use it
+// rather than acquiring a new connection from the pool — this ensures all writes
+// in a single applyProposal call are atomic.
+type Transactor interface {
+	InTransaction(ctx context.Context, fn func(ctx context.Context) error) error
+}
+
+// AuditLogWriter appends a signed entry to the immutable audit log.
+// Implementations must be append-only — existing entries must never be modified.
+type AuditLogWriter interface {
+	Append(ctx context.Context, event AuditEvent) error
+}
+
+// AuditEvent is a single entry in the audit log.
+type AuditEvent struct {
+	// LaunchID scopes the event to a specific launch for per-launch filtering.
+	LaunchID string `json:"launch_id"`
+	// EventName matches domain.DomainEvent.EventName()
+	EventName  string    `json:"event_name"`
+	OccurredAt time.Time `json:"occurred_at"`
+	// Payload is the canonical JSON of the domain event, stored as raw JSON
+	// so audit entries are human-readable without base64 decoding.
+	Payload json.RawMessage `json:"payload"`
+	// Signature is a base64 Ed25519 signature over the canonical JSON of this entry
+	// (excluding the signature field itself), signed by the server's audit key.
+	Signature string `json:"signature"`
+}
+
+// AuditLogReader reads entries from the immutable audit log.
+type AuditLogReader interface {
+	// ReadForLaunch returns all audit events for the given launch ID, in append order.
+	ReadForLaunch(ctx context.Context, launchID string) ([]AuditEvent, error)
+}
+
+// EventPublisher dispatches domain events to SSE subscribers and any other
+// in-process listeners. It is non-blocking — slow subscribers are dropped.
+type EventPublisher interface {
+	Publish(event domain.DomainEvent)
+}
+
+// SessionStore issues and validates short-lived JWT session tokens for authenticated
+// validators and coordinators.
+type SessionStore interface {
+	// Issue creates a new session token for the given operator address.
+	Issue(ctx context.Context, operatorAddr string) (token string, err error)
+
+	// Validate checks a token and returns the operator address it was issued to.
+	// Returns ErrUnauthorized if the token is invalid or expired.
+	Validate(ctx context.Context, token string) (operatorAddr string, err error)
+
+	// Revoke invalidates a session token immediately.
+	Revoke(ctx context.Context, token string) error
+
+	// RevokeAllForOperator sets a revocation fence so all tokens issued before
+	// now for the given operator address are rejected on next Validate call.
+	RevokeAllForOperator(ctx context.Context, operatorAddr string) error
+
+	// ParseClaims extracts the operator address and expiry from a token without
+	// performing a database revocation check. Used by session-info endpoints.
+	ParseClaims(token string) (operatorAddr string, expiresAt time.Time, err error)
+}
+
+// ChallengeStore manages short-lived authentication challenges.
+type ChallengeStore interface {
+	// Issue creates and stores a challenge for the given operator address.
+	// The challenge is valid for a short TTL (default 5 minutes).
+	Issue(ctx context.Context, operatorAddr string) (challenge string, err error)
+
+	// Consume retrieves and deletes a challenge for the given operator address.
+	// Returns ErrNotFound if no challenge exists or has expired.
+	Consume(ctx context.Context, operatorAddr string) (challenge string, err error)
+}
+
+// NonceStore tracks used nonces for replay protection.
+// Nonces are stored with a TTL and rejected if seen again within that window.
+type NonceStore interface {
+	// Consume records a nonce as used. Returns ErrConflict if the nonce was already seen.
+	Consume(ctx context.Context, operatorAddr, nonce string) error
+}
+
+// SignatureVerifier verifies signatures against public keys.
+type SignatureVerifier interface {
+	// Verify checks that sig is a valid signature over message by the key
+	// associated with operatorAddr. The pubKeyB64 hint may be used if the verifier
+	// needs it; pass empty string to let the verifier resolve it from the address.
+	Verify(operatorAddr, pubKeyB64 string, message, sig []byte) error
+}
+
+// GenesisRef describes how a genesis file is stored or referenced.
+// Exactly one of ExternalURL or LocalPath will be non-empty.
+type GenesisRef struct {
+	// ExternalURL is set for Option A (attestor mode): the genesis file lives
+	// at an external URL and the server redirects clients there.
+	ExternalURL string
+	// SHA256 is the hex-encoded SHA-256 hash of the genesis file contents.
+	SHA256 string
+	// LocalPath is set for Option C (host mode): the genesis file is stored
+	// on the local filesystem at this path.
+	LocalPath string
+}
+
+// GenesisStore manages genesis file storage (initial and final).
+// Two storage modes are supported:
+//
+//   - Option A (attestor): the coordinator publishes the genesis file to their
+//     own infrastructure and registers the URL + hash here. Clients are
+//     redirected to the external URL. No file bytes are stored on this server.
+//   - Option C (host): the coordinator uploads the raw file; this server stores
+//     it on disk and serves it directly. Must be explicitly enabled via config.
+type GenesisStore interface {
+	// Option C — store raw genesis bytes (host mode).
+	SaveInitial(ctx context.Context, launchID string, data []byte) error
+	SaveFinal(ctx context.Context, launchID string, data []byte) error
+
+	// Option A — store an external URL reference (attestor mode).
+	SaveInitialRef(ctx context.Context, launchID, url, sha256 string) error
+	SaveFinalRef(ctx context.Context, launchID, url, sha256 string) error
+
+	// GetInitialRef returns how to serve the initial genesis file.
+	// Returns ErrNotFound if neither a ref nor a file has been stored.
+	GetInitialRef(ctx context.Context, launchID string) (*GenesisRef, error)
+
+	// GetFinalRef returns how to serve the final genesis file.
+	// Returns ErrNotFound if neither a ref nor a file has been stored.
+	GetFinalRef(ctx context.Context, launchID string) (*GenesisRef, error)
+}

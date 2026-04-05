@@ -1,0 +1,209 @@
+package config
+
+import (
+	"crypto/ed25519"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/spf13/viper"
+)
+
+// LaunchPolicy controls who may create new launches.
+const (
+	LaunchPolicyOpen       = "open"       // any authenticated address may create a launch
+	LaunchPolicyRestricted = "restricted" // only addresses on the coordinator allowlist may create a launch
+
+	genesisMaxMiB = 700 // default genesis file size limit in mebibytes
+	mibShift      = 20  // bit-shift to convert mebibytes to bytes (1 MiB = 1 << 20)
+)
+
+// Config holds all coordd runtime configuration.
+type Config struct {
+	ListenAddr      string   `mapstructure:"listen_addr"`
+	DBPath          string   `mapstructure:"db_path"`
+	AuditLogPath    string   `mapstructure:"audit_log_path"`
+	AuditPrivKeyB64 string   `mapstructure:"audit_private_key"`
+	GenesisPath     string   `mapstructure:"genesis_path"`
+	LogLevel        string   `mapstructure:"log_level"`
+	CORSOrigins     string   `mapstructure:"cors_origins"`
+	AdminAddresses  []string `mapstructure:"admin_addresses"`
+	LaunchPolicy    string   `mapstructure:"launch_policy"`
+
+	// GenesisHostMode enables Option C (host mode): raw genesis file uploads are
+	// accepted and served directly from disk. When false (the default), only
+	// Option A (attestor mode) is accepted — coordinators register an external
+	// URL + SHA-256 hash and clients are redirected there.
+	GenesisHostMode bool `mapstructure:"genesis_host_mode"`
+
+	// GenesisMaxBytes is the maximum accepted raw genesis file size when host
+	// mode is enabled (COORD_GENESIS_HOST_MODE=true). Defaults to 700 MiB.
+	GenesisMaxBytes int64 `mapstructure:"genesis_max_bytes"`
+
+	// AuditPrivKeyFile is an alternative to AuditPrivKeyB64: a path to a file
+	// containing the base64-encoded Ed25519 seed. Intended for use with Docker
+	// secrets, Kubernetes secrets, or similar secrets managers so the key is
+	// never exposed as a plain environment variable. Generate with: coordd keygen
+	AuditPrivKeyFile string `mapstructure:"audit_private_key_file"`
+
+	// TLS configuration. TLSCert and TLSKey must be set together (or both empty).
+	// When both are set, coordd terminates TLS itself.
+	// When empty, coordd binds plain HTTP. Set InsecureNoTLS to suppress the
+	// startup warning when TLS is handled by an upstream proxy (infra TLS mode).
+	TLSCert       string `mapstructure:"tls_cert"`
+	TLSKey        string `mapstructure:"tls_key"`
+	InsecureNoTLS bool   `mapstructure:"insecure_no_tls"`
+
+	// InsecureNoSSRFCheck disables DNS-resolution and private-IP checks on
+	// user-supplied RPC URLs (monitor_rpc_url, genesis attestor URLs). Only
+	// enable this in trusted environments such as smoke-test Docker networks
+	// where RPC hosts are internal container names, not user-controlled input.
+	InsecureNoSSRFCheck bool `mapstructure:"insecure_no_ssrf_check"`
+
+	// JWTPrivKeyB64 is a base64-encoded Ed25519 seed used to sign session JWTs.
+	// Must be different from AuditPrivKeyB64. Generate with: coordd keygen
+	// Can also be provided via a file path using jwt_private_key_file.
+	JWTPrivKeyB64  string `mapstructure:"jwt_private_key"`
+	JWTPrivKeyFile string `mapstructure:"jwt_private_key_file"`
+}
+
+// Load reads configuration into a Config from the provided Viper instance.
+// Precedence (highest to lowest): CLI flags (bound by caller) → COORD_ env vars → config file → defaults.
+// cfgFile may be empty, in which case the standard search paths are used.
+func Load(v *viper.Viper, cfgFile string) (*Config, error) {
+	v.SetDefault("listen_addr", ":8080")
+	v.SetDefault("log_level", "info")
+	v.SetDefault("launch_policy", LaunchPolicyRestricted)
+	v.SetDefault("genesis_max_bytes", int64(genesisMaxMiB<<mibShift))
+
+	if cfgFile != "" {
+		v.SetConfigFile(cfgFile)
+	} else {
+		v.SetConfigName("config")
+		v.SetConfigType("yaml")
+		v.AddConfigPath(".")
+		v.AddConfigPath("$HOME/.coordd")
+		v.AddConfigPath("/etc/coordd")
+	}
+
+	v.SetEnvPrefix("COORD")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	v.AutomaticEnv()
+
+	// Explicit bindings are required, so Unmarshal picks up env vars for keys
+	// that have no default value (AutomaticEnv alone does not register them in
+	// AllKeys, which Unmarshal iterates).
+	_ = v.BindEnv("db_path", "COORD_DB_PATH")
+	_ = v.BindEnv("audit_log_path", "COORD_AUDIT_LOG_PATH")
+	_ = v.BindEnv("audit_private_key", "COORD_AUDIT_PRIVATE_KEY")
+	_ = v.BindEnv("audit_private_key_file", "COORD_AUDIT_PRIVATE_KEY_FILE")
+	_ = v.BindEnv("genesis_path", "COORD_GENESIS_PATH")
+	_ = v.BindEnv("listen_addr", "COORD_LISTEN_ADDR")
+	_ = v.BindEnv("log_level", "COORD_LOG_LEVEL")
+	_ = v.BindEnv("cors_origins", "COORD_CORS_ORIGINS")
+	_ = v.BindEnv("admin_addresses", "COORD_ADMIN_ADDRESSES")
+	_ = v.BindEnv("launch_policy", "COORD_LAUNCH_POLICY")
+	_ = v.BindEnv("tls_cert", "COORD_TLS_CERT")
+	_ = v.BindEnv("tls_key", "COORD_TLS_KEY")
+	_ = v.BindEnv("insecure_no_tls", "COORD_INSECURE_NO_TLS")
+	_ = v.BindEnv("insecure_no_ssrf_check", "COORD_INSECURE_NO_SSRF_CHECK")
+	_ = v.BindEnv("genesis_host_mode", "COORD_GENESIS_HOST_MODE")
+	_ = v.BindEnv("genesis_max_bytes", "COORD_GENESIS_MAX_BYTES")
+	_ = v.BindEnv("jwt_private_key", "COORD_JWT_PRIVATE_KEY")
+	_ = v.BindEnv("jwt_private_key_file", "COORD_JWT_PRIVATE_KEY_FILE")
+
+	if err := v.ReadInConfig(); err != nil {
+		var notFound viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFound) {
+			return nil, fmt.Errorf("reading config file: %w", err)
+		}
+	}
+
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, fmt.Errorf("unmarshalling config: %w", err)
+	}
+
+	// Unmarshal won't split a comma-separated env var string into a []string slice,
+	// so we do it explicitly here.
+	raw := v.GetString("admin_addresses")
+	cfg.AdminAddresses = nil
+	for _, a := range strings.Split(raw, ",") {
+		if a = strings.TrimSpace(a); a != "" {
+			cfg.AdminAddresses = append(cfg.AdminAddresses, a)
+		}
+	}
+
+	// If audit_private_key is empty but audit_private_key_file is set, read the
+	// seed from the file (analogous to the _FILE convention used by secrets managers).
+	if cfg.AuditPrivKeyB64 == "" && cfg.AuditPrivKeyFile != "" {
+		data, err := os.ReadFile(cfg.AuditPrivKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("config: reading audit_private_key_file: %w", err)
+		}
+		cfg.AuditPrivKeyB64 = strings.TrimSpace(string(data))
+	}
+
+	// If jwt_private_key is empty but jwt_private_key_file is set, read the seed
+	// from the file (analogous to the _FILE convention used by secrets managers).
+	if cfg.JWTPrivKeyB64 == "" && cfg.JWTPrivKeyFile != "" {
+		data, err := os.ReadFile(cfg.JWTPrivKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("config: reading jwt_private_key_file: %w", err)
+		}
+		cfg.JWTPrivKeyB64 = strings.TrimSpace(string(data))
+	}
+
+	return &cfg, cfg.validate()
+}
+
+func (c *Config) validate() error {
+	if c.DBPath == "" {
+		return errors.New("config: db_path is required (flag --db-path or env COORD_DB_PATH)")
+	}
+	if c.AuditLogPath == "" {
+		return errors.New("config: audit_log_path is required (flag --audit-log-path or env COORD_AUDIT_LOG_PATH)")
+	}
+	if c.AuditPrivKeyB64 == "" {
+		return errors.New("config: audit_private_key is required" +
+			" (env COORD_AUDIT_PRIVATE_KEY or COORD_AUDIT_PRIVATE_KEY_FILE)" +
+			" — generate with: coordd keygen")
+	}
+	keyBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(c.AuditPrivKeyB64))
+	if err != nil {
+		return fmt.Errorf("config: audit_private_key is not valid base64: %w", err)
+	}
+	if len(keyBytes) != ed25519.SeedSize {
+		return fmt.Errorf(
+			"config: audit_private_key must be a %d-byte Ed25519 seed (got %d bytes after base64 decode)",
+			ed25519.SeedSize, len(keyBytes),
+		)
+	}
+	if c.GenesisPath == "" {
+		return errors.New("config: genesis_path is required (flag --genesis-path or env COORD_GENESIS_PATH)")
+	}
+	if c.LaunchPolicy != LaunchPolicyOpen && c.LaunchPolicy != LaunchPolicyRestricted {
+		return fmt.Errorf("config: launch_policy must be %q or %q, got %q", LaunchPolicyOpen, LaunchPolicyRestricted, c.LaunchPolicy)
+	}
+	if (c.TLSCert == "") != (c.TLSKey == "") {
+		return errors.New("config: tls_cert and tls_key must both be set or both be empty")
+	}
+	if c.JWTPrivKeyB64 == "" {
+		return errors.New("config: jwt_private_key is required" +
+			" (env COORD_JWT_PRIVATE_KEY or COORD_JWT_PRIVATE_KEY_FILE)" +
+			" — generate with: coordd keygen")
+	}
+	jwtKeyBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(c.JWTPrivKeyB64))
+	if err != nil {
+		return fmt.Errorf("config: jwt_private_key is not valid base64: %w", err)
+	}
+	if len(jwtKeyBytes) != ed25519.SeedSize {
+		return fmt.Errorf(
+			"config: jwt_private_key must be a %d-byte Ed25519 seed (got %d bytes after base64 decode)",
+			ed25519.SeedSize, len(jwtKeyBytes),
+		)
+	}
+	return nil
+}

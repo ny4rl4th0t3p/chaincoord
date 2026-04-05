@@ -1,0 +1,246 @@
+package services
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/ny4rl4th0t3p/chaincoord/internal/application/ports"
+	"github.com/ny4rl4th0t3p/chaincoord/internal/domain/joinrequest"
+	"github.com/ny4rl4th0t3p/chaincoord/internal/domain/launch"
+)
+
+func newJoinReqSvc(launchRepo *fakeLaunchRepo, jrRepo *fakeJoinRequestRepo) *JoinRequestService {
+	return NewJoinRequestService(launchRepo, jrRepo, newFakeNonceStore(), &fakeVerifier{})
+}
+
+// validSubmitInput returns a SubmitInput that passes all validation for the given launch.
+func validSubmitInput(l *launch.Launch) SubmitInput {
+	gentx, _ := json.Marshal(map[string]any{
+		"chain_id": l.Record.ChainID,
+		"body": map[string]any{
+			"messages": []any{
+				map[string]any{
+					"@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
+					"value": map[string]any{"amount": "2000000utest"},
+				},
+			},
+		},
+	})
+	return SubmitInput{
+		ChainID:         l.Record.ChainID,
+		OperatorAddress: testAddr1,
+		ConsensusPubKey: "AAAA",
+		GentxJSON:       gentx,
+		PeerAddress:     "abcdef1234567890abcdef1234567890abcdef12@192.168.1.1:26656",
+		RPCEndpoint:     "https://192.168.1.1:26657",
+		Memo:            "test",
+		Timestamp:       nowTS(),
+		Nonce:           uuid.New().String(),
+		Signature:       testSig,
+	}
+}
+
+// --- Submit ---
+
+func TestJoinRequestService_Submit_NonceConflict(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowOpen
+	nonces := newFakeNonceStore()
+	nonces.consumeErr = ports.ErrConflict
+	svc := NewJoinRequestService(newFakeLaunchRepo(l), newFakeJoinRequestRepo(), nonces, &fakeVerifier{})
+
+	input := validSubmitInput(l)
+	_, err := svc.Submit(context.Background(), l.ID, input)
+	if err == nil {
+		t.Fatal("expected error for conflicting nonce")
+	}
+}
+
+func TestJoinRequestService_Submit_BadTimestamp(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowOpen
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), newFakeJoinRequestRepo())
+
+	input := validSubmitInput(l)
+	input.Timestamp = expiredTS()
+	_, err := svc.Submit(context.Background(), l.ID, input)
+	if err == nil {
+		t.Fatal("expected error for expired timestamp")
+	}
+}
+
+func TestJoinRequestService_Submit_SigFails(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowOpen
+	verifier := &fakeVerifier{err: ports.ErrUnauthorized}
+	svc := NewJoinRequestService(newFakeLaunchRepo(l), newFakeJoinRequestRepo(), newFakeNonceStore(), verifier)
+
+	_, err := svc.Submit(context.Background(), l.ID, validSubmitInput(l))
+	if err == nil {
+		t.Fatal("expected error when signature verification fails")
+	}
+}
+
+func TestJoinRequestService_Submit_LaunchNotFound(t *testing.T) {
+	svc := newJoinReqSvc(newFakeLaunchRepo(), newFakeJoinRequestRepo())
+	_, err := svc.Submit(context.Background(), uuid.New(), SubmitInput{
+		OperatorAddress: testAddr1,
+		Timestamp:       nowTS(),
+		Nonce:           uuid.New().String(),
+		Signature:       testSig,
+	})
+	if !errors.Is(err, ports.ErrNotFound) {
+		t.Fatalf("want ErrNotFound, got %v", err)
+	}
+}
+
+func TestJoinRequestService_Submit_WindowNotOpen(t *testing.T) {
+	l := testLaunch() // DRAFT — not open for applications
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), newFakeJoinRequestRepo())
+
+	_, err := svc.Submit(context.Background(), l.ID, validSubmitInput(l))
+	if err == nil {
+		t.Fatal("expected error: window not open")
+	}
+}
+
+func TestJoinRequestService_Submit_RateLimitExceeded(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowOpen
+	jrRepo := newFakeJoinRequestRepo()
+	jrRepo.setCount(l.ID, testAddr1, maxJoinRequestsPerOperator) // already at limit
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), jrRepo)
+
+	_, err := svc.Submit(context.Background(), l.ID, validSubmitInput(l))
+	if err == nil {
+		t.Fatal("expected error: rate limit exceeded")
+	}
+}
+
+func TestJoinRequestService_Submit_Success(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowOpen
+	jrRepo := newFakeJoinRequestRepo()
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), jrRepo)
+
+	jr, err := svc.Submit(context.Background(), l.ID, validSubmitInput(l))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if jr.ID == uuid.Nil {
+		t.Fatal("expected non-nil join request ID")
+	}
+	if _, ok := jrRepo.data[jr.ID]; !ok {
+		t.Fatal("join request not persisted")
+	}
+}
+
+// --- GetByID ---
+
+func TestJoinRequestService_GetByID_ForbiddenForOtherValidator(t *testing.T) {
+	l := testLaunch()
+	jrRepo := newFakeJoinRequestRepo()
+	jr := makeJoinRequest(t, l.ID, testAddr1)
+	jrRepo.data[jr.ID] = jr
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), jrRepo)
+
+	// Caller is testAddr2 (not the owner), not a coordinator.
+	_, err := svc.GetByID(context.Background(), jr.ID, testAddr2, false)
+	if !errors.Is(err, ports.ErrForbidden) {
+		t.Fatalf("want ErrForbidden, got %v", err)
+	}
+}
+
+func TestJoinRequestService_GetByID_AllowedForOwner(t *testing.T) {
+	l := testLaunch()
+	jrRepo := newFakeJoinRequestRepo()
+	jr := makeJoinRequest(t, l.ID, testAddr1)
+	jrRepo.data[jr.ID] = jr
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), jrRepo)
+
+	got, err := svc.GetByID(context.Background(), jr.ID, testAddr1, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ID != jr.ID {
+		t.Errorf("ID mismatch")
+	}
+}
+
+func TestJoinRequestService_GetByID_AllowedForCoordinator(t *testing.T) {
+	l := testLaunch()
+	jrRepo := newFakeJoinRequestRepo()
+	jr := makeJoinRequest(t, l.ID, testAddr1)
+	jrRepo.data[jr.ID] = jr
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), jrRepo)
+
+	// Coordinator (isCoordinator=true) can see anyone's request.
+	got, err := svc.GetByID(context.Background(), jr.ID, testAddr2, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.ID != jr.ID {
+		t.Errorf("ID mismatch")
+	}
+}
+
+// --- ListForLaunch ---
+
+func TestJoinRequestService_ListForLaunch_ReturnsAll(t *testing.T) {
+	l := testLaunch()
+	jrRepo := newFakeJoinRequestRepo()
+	jr1 := makeJoinRequest(t, l.ID, testAddr1)
+	jr2 := makeJoinRequest(t, l.ID, testAddr2)
+	jrRepo.data[jr1.ID] = jr1
+	jrRepo.data[jr2.ID] = jr2
+	svc := newJoinReqSvc(newFakeLaunchRepo(l), jrRepo)
+
+	items, total, err := svc.ListForLaunch(context.Background(), l.ID, nil, 1, 20)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 2 || len(items) != 2 {
+		t.Errorf("want 2 items, got %d (total=%d)", len(items), total)
+	}
+}
+
+// --- helpers ---
+
+// makeJoinRequest builds a minimal join request for the given operator address.
+func makeJoinRequest(t *testing.T, launchID uuid.UUID, addr string) *joinrequest.JoinRequest {
+	t.Helper()
+	rec := testChainRecord()
+	gentx, _ := json.Marshal(map[string]any{
+		"chain_id": rec.ChainID,
+		"body": map[string]any{
+			"messages": []any{
+				map[string]any{
+					"@type": "/cosmos.staking.v1beta1.MsgCreateValidator",
+					"value": map[string]any{"amount": "2000000utest"},
+				},
+			},
+		},
+	})
+	peer, _ := launch.NewPeerAddress("abcdef1234567890abcdef1234567890abcdef12@192.168.1.1:26656")
+	rpc, _ := launch.NewRPCEndpoint("https://192.168.1.1:26657")
+
+	jr, err := joinrequest.New(
+		uuid.New(), launchID,
+		mustAddr(addr),
+		"AAAA",
+		gentx,
+		peer, rpc, "test-memo",
+		mustSig(),
+		rec, launch.LaunchTypeTestnet,
+		time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatalf("makeJoinRequest: %v", err)
+	}
+	return jr
+}

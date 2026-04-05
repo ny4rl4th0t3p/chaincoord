@@ -1,0 +1,248 @@
+package sqlite
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+
+	"github.com/ny4rl4th0t3p/chaincoord/internal/application/ports"
+	"github.com/ny4rl4th0t3p/chaincoord/internal/domain/joinrequest"
+	"github.com/ny4rl4th0t3p/chaincoord/internal/domain/launch"
+)
+
+// JoinRequestRepository implements ports.JoinRequestRepository for SQLite.
+type JoinRequestRepository struct {
+	db *sql.DB
+}
+
+func NewJoinRequestRepository(db *sql.DB) *JoinRequestRepository {
+	return &JoinRequestRepository{db: db}
+}
+
+func (r *JoinRequestRepository) Save(ctx context.Context, jr *joinrequest.JoinRequest) error {
+	q := conn(ctx, r.db)
+	var approvedBy *string
+	if jr.ApprovedByProposal != nil {
+		s := jr.ApprovedByProposal.String()
+		approvedBy = &s
+	}
+
+	_, err := q.ExecContext(ctx, `
+		INSERT INTO join_requests (
+			id, launch_id, operator_address, consensus_pubkey, gentx_json,
+			peer_address, rpc_endpoint, memo, submitted_at, operator_signature,
+			status, rejection_reason, approved_by_proposal, self_delegation_amount
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		ON CONFLICT(id) DO UPDATE SET
+			status=excluded.status,
+			rejection_reason=excluded.rejection_reason,
+			approved_by_proposal=excluded.approved_by_proposal`,
+		uuidToStr(jr.ID), uuidToStr(jr.LaunchID),
+		jr.OperatorAddress.String(), jr.ConsensusPubKey,
+		string(jr.GentxJSON),
+		jr.PeerAddress.String(), jr.RPCEndpoint.String(),
+		jr.Memo,
+		timeToStr(jr.SubmittedAt),
+		jr.OperatorSignature.String(),
+		string(jr.Status), jr.RejectionReason,
+		approvedBy,
+		jr.SelfDelegationAmount(),
+	)
+	if err != nil {
+		return fmt.Errorf("join request save: %w", err)
+	}
+	return nil
+}
+
+func (r *JoinRequestRepository) FindByID(ctx context.Context, id uuid.UUID) (*joinrequest.JoinRequest, error) {
+	q := conn(ctx, r.db)
+	row := q.QueryRowContext(ctx, `SELECT * FROM join_requests WHERE id=?`, uuidToStr(id))
+	jr, err := scanJoinRequest(row.Scan)
+	if err != nil {
+		return nil, err
+	}
+	return jr, nil
+}
+
+func (r *JoinRequestRepository) FindByLaunch(
+	ctx context.Context,
+	launchID uuid.UUID,
+	status *joinrequest.Status,
+	page, perPage int,
+) ([]*joinrequest.JoinRequest, int, error) {
+	q := conn(ctx, r.db)
+	offset := (page - 1) * perPage
+
+	var (
+		rows  *sql.Rows
+		total int
+		err   error
+	)
+	if status == nil {
+		rows, err = q.QueryContext(ctx,
+			`SELECT * FROM join_requests WHERE launch_id=? ORDER BY submitted_at DESC LIMIT ? OFFSET ?`,
+			uuidToStr(launchID), perPage, offset)
+	} else {
+		rows, err = q.QueryContext(ctx,
+			`SELECT * FROM join_requests WHERE launch_id=? AND status=? ORDER BY submitted_at DESC LIMIT ? OFFSET ?`,
+			uuidToStr(launchID), string(*status), perPage, offset)
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("join request find by launch: %w", err)
+	}
+	defer rows.Close()
+
+	jrs, err := scanJoinRequestRows(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if status == nil {
+		err = q.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM join_requests WHERE launch_id=?`, uuidToStr(launchID)).Scan(&total)
+	} else {
+		err = q.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM join_requests WHERE launch_id=? AND status=?`,
+			uuidToStr(launchID), string(*status)).Scan(&total)
+	}
+	if err != nil {
+		return nil, 0, fmt.Errorf("join request count: %w", err)
+	}
+	return jrs, total, nil
+}
+
+func (r *JoinRequestRepository) FindByOperator(
+	ctx context.Context, launchID uuid.UUID, operatorAddr string,
+) (*joinrequest.JoinRequest, error) {
+	q := conn(ctx, r.db)
+	row := q.QueryRowContext(ctx,
+		`SELECT * FROM join_requests WHERE launch_id=? AND operator_address=? ORDER BY submitted_at DESC LIMIT 1`,
+		uuidToStr(launchID), operatorAddr)
+	return scanJoinRequest(row.Scan)
+}
+
+func (r *JoinRequestRepository) FindApprovedByLaunch(ctx context.Context, launchID uuid.UUID) ([]*joinrequest.JoinRequest, error) {
+	q := conn(ctx, r.db)
+	rows, err := q.QueryContext(ctx,
+		`SELECT * FROM join_requests WHERE launch_id=? AND status='APPROVED' ORDER BY submitted_at`,
+		uuidToStr(launchID))
+	if err != nil {
+		return nil, fmt.Errorf("find approved: %w", err)
+	}
+	defer rows.Close()
+	return scanJoinRequestRows(rows)
+}
+
+func (r *JoinRequestRepository) CountByOperator(ctx context.Context, launchID uuid.UUID, operatorAddr string) (int, error) {
+	q := conn(ctx, r.db)
+	var n int
+	err := q.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM join_requests WHERE launch_id=? AND operator_address=?`,
+		uuidToStr(launchID), operatorAddr).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count by operator: %w", err)
+	}
+	return n, nil
+}
+
+func (r *JoinRequestRepository) CountByConsensusPubKey(ctx context.Context, launchID uuid.UUID, consensusPubKey string) (int, error) {
+	q := conn(ctx, r.db)
+	var n int
+	err := q.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM join_requests WHERE launch_id=? AND consensus_pubkey=?`,
+		uuidToStr(launchID), consensusPubKey).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count by consensus pubkey: %w", err)
+	}
+	return n, nil
+}
+
+func scanJoinRequest(scan func(dest ...any) error) (*joinrequest.JoinRequest, error) {
+	var (
+		idStr, launchIDStr                       string
+		operatorAddr, consensusPubKey, gentxJSON string
+		peerAddr, rpcEndpoint, memo              string
+		submittedAt, operatorSig                 string
+		status, rejectionReason                  string
+		approvedByProposal                       *string
+		selfDelegation                           int64
+	)
+	err := scan(
+		&idStr, &launchIDStr,
+		&operatorAddr, &consensusPubKey, &gentxJSON,
+		&peerAddr, &rpcEndpoint, &memo,
+		&submittedAt, &operatorSig,
+		&status, &rejectionReason, &approvedByProposal, &selfDelegation,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ports.ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("scan join request: %w", err)
+	}
+
+	id, err := strToUUID(idStr)
+	if err != nil {
+		return nil, err
+	}
+	launchID, err := strToUUID(launchIDStr)
+	if err != nil {
+		return nil, err
+	}
+	oa, err := launch.NewOperatorAddress(operatorAddr)
+	if err != nil {
+		return nil, fmt.Errorf("scan operator address: %w", err)
+	}
+	pa, err := launch.NewPeerAddress(peerAddr)
+	if err != nil {
+		return nil, fmt.Errorf("scan peer address: %w", err)
+	}
+	rpc, err := launch.NewRPCEndpoint(rpcEndpoint)
+	if err != nil {
+		return nil, fmt.Errorf("scan rpc endpoint: %w", err)
+	}
+	sa, err := strToTime(submittedAt)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := launch.NewSignature(operatorSig)
+	if err != nil {
+		return nil, fmt.Errorf("scan operator sig: %w", err)
+	}
+	approvedBy, err := nullStrToUUID(approvedByProposal)
+	if err != nil {
+		return nil, err
+	}
+
+	jr := &joinrequest.JoinRequest{
+		ID:                 id,
+		LaunchID:           launchID,
+		OperatorAddress:    oa,
+		ConsensusPubKey:    consensusPubKey,
+		GentxJSON:          []byte(gentxJSON),
+		PeerAddress:        pa,
+		RPCEndpoint:        rpc,
+		Memo:               memo,
+		SubmittedAt:        sa,
+		OperatorSignature:  sig,
+		Status:             joinrequest.Status(status),
+		RejectionReason:    rejectionReason,
+		ApprovedByProposal: approvedBy,
+	}
+	return jr, nil
+}
+
+func scanJoinRequestRows(rows *sql.Rows) ([]*joinrequest.JoinRequest, error) {
+	var out []*joinrequest.JoinRequest
+	for rows.Next() {
+		jr, err := scanJoinRequest(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, jr)
+	}
+	return out, rows.Err()
+}

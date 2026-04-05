@@ -1,0 +1,31 @@
+# Binaries
+bin/
+dist/
+*.exe
+
+# Go build artifacts
+*.test
+*.out
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Config with secrets
+config.local.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Audit log output (dev)
+audit.jsonl
+
+/tmp/
