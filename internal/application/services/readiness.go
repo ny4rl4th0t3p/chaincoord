@@ -248,14 +248,17 @@ func (s *ReadinessService) GetDashboard(ctx context.Context, launchID uuid.UUID)
 
 	// BFT consensus requires >2/3 of voting power. We use the exact rational threshold.
 	const (
-		bftThreshold = 200.0 / 3.0 // 66.666...%
-		atRiskBelow  = 50.0
+		bftThreshold    = 200.0 / 3.0 // 66.666...%
+		atRiskBelow     = 50.0
+		statusReachable = "REACHABLE"
+		statusConfirmed = "CONFIRMED"
+		statusAtRisk    = "AT_RISK"
 	)
-	threshold := "REACHABLE"
+	threshold := statusReachable
 	if confirmedPct >= bftThreshold {
-		threshold = "CONFIRMED"
+		threshold = statusConfirmed
 	} else if confirmedPct < atRiskBelow {
-		threshold = "AT_RISK"
+		threshold = statusAtRisk
 	}
 
 	return &ReadinessDashboard{
