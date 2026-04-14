@@ -169,3 +169,10 @@ CREATE TABLE coordinator_allowlist
     added_by TEXT NOT NULL,
     added_at TEXT NOT NULL
 );
+
+CREATE TABLE sessions
+(
+    token            TEXT PRIMARY KEY,
+    operator_address TEXT NOT NULL,
+    expires_at       TEXT NOT NULL -- RFC3339 UTC
+);

@@ -136,7 +136,7 @@ func TestIntegration_AuditLog_AppendOnReopen(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.jsonl")
 
 	// First writer appends one event.
-	w1, err := Open(path)
+	w1, err := Open(path, nil)
 	if err != nil {
 		t.Fatalf("Open w1: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestIntegration_AuditLog_AppendOnReopen(t *testing.T) {
 	}
 
 	// Second writer opens the same file and appends another event.
-	w2, err := Open(path)
+	w2, err := Open(path, nil)
 	if err != nil {
 		t.Fatalf("Open w2: %v", err)
 	}
