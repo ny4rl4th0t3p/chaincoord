@@ -20,12 +20,13 @@ func resolvedVersion() string {
 	if !ok {
 		return Version
 	}
+	const shortHashLen = 7
 	var commit, dirty string
 	for _, s := range info.Settings {
 		switch s.Key {
 		case "vcs.revision":
-			if len(s.Value) > 7 {
-				commit = s.Value[:7]
+			if len(s.Value) > shortHashLen {
+				commit = s.Value[:shortHashLen]
 			} else {
 				commit = s.Value
 			}
