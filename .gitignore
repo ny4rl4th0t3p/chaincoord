@@ -29,3 +29,5 @@ Thumbs.db
 audit.jsonl
 
 /tmp/
+/docker/secrets/audit_key
+/docker/secrets/jwt_key
