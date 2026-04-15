@@ -189,6 +189,7 @@ LAUNCH_BODY=$(jq -n \
     record: {
       chain_id:                   $chain_id,
       chain_name:                 "Gaia Smoke Test",
+      bech32_prefix:              "cosmos",
       binary_name:                "gaiad",
       binary_version:             "v27.1.0",
       denom:                      "uatom",

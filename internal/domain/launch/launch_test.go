@@ -22,6 +22,7 @@ func testRecord() launch.ChainRecord {
 	return launch.ChainRecord{
 		ChainID:               "testchain-1",
 		ChainName:             "Test Chain",
+		Bech32Prefix:          "cosmos",
 		BinaryName:            "testchaind",
 		BinaryVersion:         "v1.0.0",
 		Denom:                 "utest",

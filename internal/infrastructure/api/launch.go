@@ -19,6 +19,7 @@ import (
 type chainRecordJSON struct {
 	ChainID                 string     `json:"chain_id"`
 	ChainName               string     `json:"chain_name"`
+	Bech32Prefix            string     `json:"bech32_prefix"`
 	BinaryName              string     `json:"binary_name"`
 	BinaryVersion           string     `json:"binary_version"`
 	BinarySHA256            string     `json:"binary_sha256"`
@@ -55,6 +56,7 @@ func launchToJSON(l *launch.Launch) launchJSON {
 		Record: chainRecordJSON{
 			ChainID:                 r.ChainID,
 			ChainName:               r.ChainName,
+			Bech32Prefix:            r.Bech32Prefix,
 			BinaryName:              r.BinaryName,
 			BinaryVersion:           r.BinaryVersion,
 			BinarySHA256:            r.BinarySHA256,
@@ -465,6 +467,7 @@ func parseChainRecord(r chainRecordJSON) (launch.ChainRecord, error) {
 	return launch.ChainRecord{
 		ChainID:                 r.ChainID,
 		ChainName:               r.ChainName,
+		Bech32Prefix:            r.Bech32Prefix,
 		BinaryName:              r.BinaryName,
 		BinaryVersion:           r.BinaryVersion,
 		BinarySHA256:            r.BinarySHA256,
@@ -479,6 +482,48 @@ func parseChainRecord(r chainRecordJSON) (launch.ChainRecord, error) {
 		ApplicationWindowOpen:   r.ApplicationWindowOpen,
 		MinValidatorCount:       r.MinValidatorCount,
 	}, nil
+}
+
+// chainHintJSON is the response body for GET /launch/{id}/chain-hint.
+type chainHintJSON struct {
+	ChainID      string `json:"chain_id"`
+	ChainName    string `json:"chain_name"`
+	Bech32Prefix string `json:"bech32_prefix"`
+	Denom        string `json:"denom"`
+}
+
+// GET /launch/{id}/chain-hint
+// Unauthenticated — no auth or allowlist check.
+// Returns the minimal chain metadata needed to register the network with a
+// wallet extension. Even ALLOWLIST launches expose this endpoint so validators
+// can derive their chain address before the coordinator adds them to the list.
+//
+// @Summary      Chain hint
+// @Description  Returns chain_id, chain_name, bech32_prefix, and denom. No authentication required.
+// @Tags         launches
+// @Produce      json
+// @Param        id   path      string  true  "Launch UUID"
+// @Success      200  {object}  chainHintJSON
+// @Failure      400  {object}  errorEnvelope
+// @Failure      404  {object}  errorEnvelope
+// @Router       /launch/{id}/chain-hint [get]
+func (s *Server) handleChainHint(w http.ResponseWriter, r *http.Request) {
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid_id", "launch id must be a valid UUID")
+		return
+	}
+	hint, err := s.launches.GetChainHint(r.Context(), id)
+	if err != nil {
+		writeServiceError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, chainHintJSON{
+		ChainID:      hint.ChainID,
+		ChainName:    hint.ChainName,
+		Bech32Prefix: hint.Bech32Prefix,
+		Denom:        hint.Denom,
+	})
 }
 
 func parseOperatorAddresses(addrs []string) ([]launch.OperatorAddress, error) {

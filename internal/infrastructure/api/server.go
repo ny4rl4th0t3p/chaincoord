@@ -197,6 +197,10 @@ func (s *Server) Handler() http.Handler {
 	r.Post("/launch/{id}/open-window", s.requireAuth(s.handleOpenWindow))
 	r.Post("/launch/{id}/cancel", s.requireAuth(s.handleLaunchCancel))
 
+	// Unauthenticated chain metadata — bypasses allowlist so validators can add
+	// the chain to their wallet before being granted access.
+	r.Get("/launch/{id}/chain-hint", s.handleChainHint)
+
 	// Genesis endpoints — default is attestor mode (JSON ref); host mode must be explicitly enabled.
 	r.Post("/launch/{id}/genesis", s.requireAuth(s.handleGenesisUpload))
 	r.Get("/launch/{id}/genesis", s.handleGenesisGet)

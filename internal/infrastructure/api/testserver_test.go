@@ -54,6 +54,7 @@ func testLaunch() *launch.Launch {
 	rec := launch.ChainRecord{
 		ChainID:                 "testchain-1",
 		ChainName:               "Test Chain",
+		Bech32Prefix:            "cosmos",
 		BinaryName:              "testchaind",
 		BinaryVersion:           "v1.0.0",
 		BinarySHA256:            "abc123",

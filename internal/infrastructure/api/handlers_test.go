@@ -122,7 +122,7 @@ func testProposalObj(launchID uuid.UUID) *proposal.Proposal {
 func validLaunchBody() []byte {
 	return []byte(`{
 		"record":{
-			"chain_id":"newchain-1","chain_name":"New Chain",
+			"chain_id":"newchain-1","chain_name":"New Chain","bech32_prefix":"cosmos",
 			"binary_name":"newchaind","binary_version":"v1.0.0","binary_sha256":"abc",
 			"denom":"unew","min_self_delegation":"1000000",
 			"max_commission_rate":"0.20","max_commission_change_rate":"0.01",
@@ -345,6 +345,57 @@ func TestHandleLaunchGet_Success(t *testing.T) {
 	w := h.do("GET", "/launch/"+l.ID.String(), nil, nil)
 	assertStatusCode(t, w, http.StatusOK)
 	assertContentTypeJSON(t, w)
+}
+
+// ---- GET /launch/{id}/chain-hint --------------------------------------------
+
+func TestHandleChainHint_BadUUID(t *testing.T) {
+	h := newHarness(t)
+	w := h.do("GET", "/launch/not-a-uuid/chain-hint", nil, nil)
+	assertStatusCode(t, w, http.StatusBadRequest)
+}
+
+func TestHandleChainHint_NotFound(t *testing.T) {
+	h := newHarness(t)
+	w := h.do("GET", "/launch/"+uuid.New().String()+"/chain-hint", nil, nil)
+	assertStatusCode(t, w, http.StatusNotFound)
+}
+
+func TestHandleChainHint_NoAuthRequired(t *testing.T) {
+	h := newHarness(t)
+	l := testLaunch()
+	h.launches.data[l.ID] = l
+	// No token — must succeed.
+	w := h.do("GET", "/launch/"+l.ID.String()+"/chain-hint", nil, nil)
+	assertStatusCode(t, w, http.StatusOK)
+	assertContentTypeJSON(t, w)
+}
+
+func TestHandleChainHint_AllowlistLaunchVisible(t *testing.T) {
+	h := newHarness(t)
+	l := testLaunch()
+	l.Visibility = launch.VisibilityAllowlist // not on allowlist, unauthenticated
+	h.launches.data[l.ID] = l
+	// chain-hint must bypass visibility — 200 even for allowlist launches.
+	w := h.do("GET", "/launch/"+l.ID.String()+"/chain-hint", nil, nil)
+	assertStatusCode(t, w, http.StatusOK)
+}
+
+func TestHandleChainHint_ResponseFields(t *testing.T) {
+	h := newHarness(t)
+	l := testLaunch()
+	h.launches.data[l.ID] = l
+	w := h.do("GET", "/launch/"+l.ID.String()+"/chain-hint", nil, nil)
+	assertStatusCode(t, w, http.StatusOK)
+	var body map[string]any
+	if err := json.NewDecoder(w.Body).Decode(&body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	for _, field := range []string{"chain_id", "chain_name", "bech32_prefix", "denom"} {
+		if _, ok := body[field]; !ok {
+			t.Errorf("response missing field %q", field)
+		}
+	}
 }
 
 // ---- PATCH /launch/{id} -----------------------------------------------------
