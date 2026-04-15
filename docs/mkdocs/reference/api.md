@@ -73,6 +73,7 @@ Create a new launch. The caller becomes the lead coordinator.
   "record": {
     "chain_id": "mychain-1",
     "chain_name": "My Chain",
+    "bech32_prefix": "mychain",
     "binary_name": "mychaind",
     "binary_version": "v1.0.0",
     "denom": "utoken",
@@ -105,9 +106,23 @@ List launches visible to the authenticated caller. Paginated (`?page=1&per_page=
 
 Get a single launch by ID.
 
+### `GET /launch/{id}/chain-hint`
+
+Return the minimal chain metadata needed to register the network with a wallet extension (`chain_id`, `chain_name`, `bech32_prefix`, `denom`). **No authentication required** — even allowlist-gated launches expose this endpoint so validators can derive their chain address before being added to the allowlist.
+
+**Response:**
+```json
+{
+  "chain_id": "mychain-1",
+  "chain_name": "My Chain",
+  "bech32_prefix": "mychain",
+  "denom": "utoken"
+}
+```
+
 ### `PATCH /launch/{id}`
 
-Update mutable fields on a launch. Currently only `monitor_rpc_url` is patchable (sets the CometBFT RPC endpoint polled by the block monitor).
+Update mutable fields on a launch. Patchable fields: `chain_name`, `binary_version`, `binary_sha256`, `repo_url`, `repo_commit`, `genesis_time`, `min_validator_count`, `visibility`, `allowlist`, `monitor_rpc_url`.
 
 ### `POST /launch/{id}/open-window`
 
