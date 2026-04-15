@@ -4,7 +4,7 @@
 > the design space of decentralised genesis coordination. The heavy lifting was done by a supervised AI
 > agent. It is research-grade — not for production use.
 
-Self-hosted coordination server and CLI for **Cosmos SDK** chain genesis launches.
+Self-hosted coordination system for **Cosmos SDK** chain launches.
 
 ---
 
