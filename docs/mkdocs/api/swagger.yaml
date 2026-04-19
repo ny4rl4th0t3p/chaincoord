@@ -149,9 +149,22 @@ definitions:
       address:
         type: string
     type: object
+  internal_infrastructure_api.chainHintJSON:
+    properties:
+      bech32_prefix:
+        type: string
+      chain_id:
+        type: string
+      chain_name:
+        type: string
+      denom:
+        type: string
+    type: object
   internal_infrastructure_api.chainRecordJSON:
     properties:
       application_window_open:
+        type: string
+      bech32_prefix:
         type: string
       binary_name:
         type: string
@@ -896,6 +909,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Cancel a launch
+      tags:
+      - launches
+  /launch/{id}/chain-hint:
+    get:
+      description: Returns chain_id, chain_name, bech32_prefix, and denom. No authentication
+        required.
+      parameters:
+      - description: Launch UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_infrastructure_api.chainHintJSON'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/internal_infrastructure_api.errorEnvelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/internal_infrastructure_api.errorEnvelope'
+      summary: Chain hint
       tags:
       - launches
   /launch/{id}/committee:

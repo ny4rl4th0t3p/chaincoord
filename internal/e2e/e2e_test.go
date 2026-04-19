@@ -342,6 +342,7 @@ func TestE2E_HappyPath(t *testing.T) {
 		"record": map[string]any{
 			"chain_id":                   "testchain-1",
 			"chain_name":                 "Test Chain",
+			"bech32_prefix":              "cosmos",
 			"binary_name":                "testchaind",
 			"binary_version":             "v1.0.0",
 			"binary_sha256":              "abc123",

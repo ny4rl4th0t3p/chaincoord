@@ -4,7 +4,7 @@
 > the design space of decentralised genesis coordination. The heavy lifting was done by a supervised AI
 > agent. It is research-grade — not for production use.
 
-Self-hosted coordination server and CLI for **Cosmos SDK** chain genesis launches.
+Self-hosted coordination system for **Cosmos SDK** chain launches.
 
 ---
 
@@ -86,16 +86,18 @@ curl http://localhost:8080/healthz
 
 ## Documentation
 
-- [Concepts overview](docs/mkdocs/concepts/overview.md) — roles, proposals, and the audit log
-- [Launch lifecycle](docs/mkdocs/concepts/lifecycle.md) — all seven states in detail
-- [Roles](docs/mkdocs/concepts/roles.md) — lead coordinator, coordinator, validator
-- [Proposals & M-of-N](docs/mkdocs/concepts/proposals.md) — all action types and signing rules
-- [Setup & Configuration](docs/mkdocs/setup.md) — full config reference, TLS, CORS, production options
-- [Quickstart](docs/mkdocs/getting-started/quickstart.md) — step-by-step local setup
-- [Docker](docs/mkdocs/getting-started/docker.md) — containerised deployment
-- [Smoke test](docs/mkdocs/getting-started/smoke-test.md) — end-to-end protocol against a live chain
-- [API reference](docs/mkdocs/reference/api.md) — HTTP endpoints
-- [Audit CLI](docs/mkdocs/reference/audit.md) — offline log verification
+Full documentation is available at **https://ny4rl4th0t3p.github.io/chaincoord/**
+
+- [Concepts overview](https://ny4rl4th0t3p.github.io/chaincoord/concepts/overview/) — roles, proposals, and the audit log
+- [Launch lifecycle](https://ny4rl4th0t3p.github.io/chaincoord/concepts/lifecycle/) — all seven states in detail
+- [Roles](https://ny4rl4th0t3p.github.io/chaincoord/concepts/roles/) — lead coordinator, coordinator, validator
+- [Proposals & M-of-N](https://ny4rl4th0t3p.github.io/chaincoord/concepts/proposals/) — all action types and signing rules
+- [Setup & Configuration](https://ny4rl4th0t3p.github.io/chaincoord/reference/setup/) — full config reference, TLS, CORS, production options
+- [Quickstart](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/quickstart/) — step-by-step local setup
+- [Docker](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/docker/) — containerised deployment
+- [Smoke test](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/smoke-test/) — end-to-end protocol against a live chain
+- [API reference](https://ny4rl4th0t3p.github.io/chaincoord/reference/api/) — HTTP endpoints
+- [Audit CLI](https://ny4rl4th0t3p.github.io/chaincoord/reference/audit/) — offline log verification
 
 ---
 

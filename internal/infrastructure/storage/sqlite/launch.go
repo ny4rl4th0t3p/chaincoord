@@ -30,7 +30,7 @@ func (r *LaunchRepository) Save(ctx context.Context, l *launch.Launch) error {
 	// Attempt UPDATE first (optimistic lock).
 	res, err := q.ExecContext(ctx, `
 		UPDATE launches SET
-			chain_id=?, chain_name=?, binary_name=?, binary_version=?, binary_sha256=?,
+			chain_id=?, chain_name=?, bech32_prefix=?, binary_name=?, binary_version=?, binary_sha256=?,
 			repo_url=?, repo_commit=?, genesis_time=?, denom=?, min_self_delegation=?,
 			max_commission_rate=?, max_commission_change_rate=?,
 			gentx_deadline=?, application_window_open=?, min_validator_count=?,
@@ -39,7 +39,7 @@ func (r *LaunchRepository) Save(ctx context.Context, l *launch.Launch) error {
 			monitor_rpc_url=?,
 			updated_at=?, version=version+1
 		WHERE id=? AND version=?`,
-		l.Record.ChainID, l.Record.ChainName, l.Record.BinaryName,
+		l.Record.ChainID, l.Record.ChainName, l.Record.Bech32Prefix, l.Record.BinaryName,
 		l.Record.BinaryVersion, l.Record.BinarySHA256,
 		l.Record.RepoURL, l.Record.RepoCommit,
 		nullTimeToStr(l.Record.GenesisTime),
@@ -84,7 +84,7 @@ func (r *LaunchRepository) insert(ctx context.Context, l *launch.Launch) error {
 	q := conn(ctx, r.db)
 	_, err := q.ExecContext(ctx, `
 		INSERT INTO launches (
-			id, chain_id, chain_name, binary_name, binary_version, binary_sha256,
+			id, chain_id, chain_name, bech32_prefix, binary_name, binary_version, binary_sha256,
 			repo_url, repo_commit, genesis_time, denom, min_self_delegation,
 			max_commission_rate, max_commission_change_rate,
 			gentx_deadline, application_window_open, min_validator_count,
@@ -92,9 +92,9 @@ func (r *LaunchRepository) insert(ctx context.Context, l *launch.Launch) error {
 			initial_genesis_sha256, final_genesis_sha256,
 			monitor_rpc_url,
 			created_at, updated_at, version
-		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`,
+		) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,0)`,
 		uuidToStr(l.ID),
-		l.Record.ChainID, l.Record.ChainName, l.Record.BinaryName,
+		l.Record.ChainID, l.Record.ChainName, l.Record.Bech32Prefix, l.Record.BinaryName,
 		l.Record.BinaryVersion, l.Record.BinarySHA256,
 		l.Record.RepoURL, l.Record.RepoCommit,
 		nullTimeToStr(l.Record.GenesisTime),
@@ -460,18 +460,18 @@ func (*LaunchRepository) scanLaunchRow(rows *sql.Rows) (*launch.Launch, error) {
 
 func scanLaunchCols(scan func(dest ...any) error) (*launch.Launch, error) {
 	var (
-		idStr, chainID, chainName, binaryName, binaryVersion, binarySHA256 string
-		repoURL, repoCommit                                                string
-		genesisTime                                                        *string
-		denom, minSelfDelegation                                           string
-		maxCommRate, maxCommChangeRate                                     string
-		gentxDeadline, appWindowOpen                                       string
-		minValCount                                                        int
-		launchType, visibility, status                                     string
-		initialGenesisSHA256, finalGenesisSHA256                           string
-		monitorRPCURL                                                      string
-		createdAt, updatedAt                                               string
-		version                                                            int
+		idStr, chainID, chainName, bech32Prefix, binaryName, binaryVersion, binarySHA256 string
+		repoURL, repoCommit                                                              string
+		genesisTime                                                                      *string
+		denom, minSelfDelegation                                                         string
+		maxCommRate, maxCommChangeRate                                                   string
+		gentxDeadline, appWindowOpen                                                     string
+		minValCount                                                                      int
+		launchType, visibility, status                                                   string
+		initialGenesisSHA256, finalGenesisSHA256                                         string
+		monitorRPCURL                                                                    string
+		createdAt, updatedAt                                                             string
+		version                                                                          int
 	)
 	err := scan(
 		&idStr, &chainID, &chainName, &binaryName, &binaryVersion, &binarySHA256,
@@ -482,6 +482,7 @@ func scanLaunchCols(scan func(dest ...any) error) (*launch.Launch, error) {
 		&initialGenesisSHA256, &finalGenesisSHA256,
 		&monitorRPCURL,
 		&createdAt, &updatedAt, &version,
+		&bech32Prefix,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ports.ErrNotFound
@@ -528,6 +529,7 @@ func scanLaunchCols(scan func(dest ...any) error) (*launch.Launch, error) {
 		Record: launch.ChainRecord{
 			ChainID:                 chainID,
 			ChainName:               chainName,
+			Bech32Prefix:            bech32Prefix,
 			BinaryName:              binaryName,
 			BinaryVersion:           binaryVersion,
 			BinarySHA256:            binarySHA256,

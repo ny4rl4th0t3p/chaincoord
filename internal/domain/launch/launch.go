@@ -84,6 +84,7 @@ func (c Committee) HasMember(addr OperatorAddress) bool {
 type ChainRecord struct {
 	ChainID                 string
 	ChainName               string
+	Bech32Prefix            string
 	BinaryName              string
 	BinaryVersion           string
 	BinarySHA256            string
@@ -479,6 +480,9 @@ func (l *Launch) dominantVotingPowerPct() (dominantAddr string, pct float64) {
 func validateChainRecord(r ChainRecord) error {
 	if r.ChainID == "" {
 		return fmt.Errorf("chain_id is required")
+	}
+	if r.Bech32Prefix == "" {
+		return fmt.Errorf("bech32_prefix is required")
 	}
 	if r.BinaryName == "" {
 		return fmt.Errorf("binary_name is required")

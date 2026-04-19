@@ -466,6 +466,33 @@ func (s *LaunchService) GetCommittee(ctx context.Context, launchID uuid.UUID, ca
 	return l.Committee, nil
 }
 
+// ChainHintOutput is the minimal public metadata returned by GetChainHint.
+// It is intentionally small: enough for a wallet to register the chain,
+// but reveals nothing about who is participating.
+type ChainHintOutput struct {
+	ChainID      string
+	ChainName    string
+	Bech32Prefix string
+	Denom        string
+}
+
+// GetChainHint returns the chain metadata needed to register the network with a
+// wallet extension. It bypasses visibility — even ALLOWLIST launches expose
+// this data so validators can derive their address before being added to the list.
+// Returns ErrNotFound for unknown IDs.
+func (s *LaunchService) GetChainHint(ctx context.Context, id uuid.UUID) (ChainHintOutput, error) {
+	l, err := s.launches.FindByID(ctx, id)
+	if err != nil {
+		return ChainHintOutput{}, err
+	}
+	return ChainHintOutput{
+		ChainID:      l.Record.ChainID,
+		ChainName:    l.Record.ChainName,
+		Bech32Prefix: l.Record.Bech32Prefix,
+		Denom:        l.Record.Denom,
+	}, nil
+}
+
 // GetLaunch returns a single launch by ID, gated by visibility.
 func (s *LaunchService) GetLaunch(ctx context.Context, id uuid.UUID, callerAddr string) (*launch.Launch, error) {
 	l, err := s.launches.FindByID(ctx, id)

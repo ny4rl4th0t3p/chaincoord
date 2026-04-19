@@ -85,7 +85,6 @@ services:
         condition: service_healthy
     volumes:
       - ./smoke-test.sh:/smoke-test.sh:ro
-      - ./launch-config.yaml:/launch-config.yaml:ro
       - gaia-shared:/gaia
     environment:
       COORD_SERVER: "http://coordd:8080"

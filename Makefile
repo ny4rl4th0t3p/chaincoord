@@ -25,9 +25,10 @@ test-e2e:
 
 lint:
 	go vet ./...
+	golangci-lint run --fix
 
 swagger:
-	swag init --generalInfo cmd/coordd/main.go --dir . --output docs/api/ --outputTypes yaml --parseInternal --parseDependency
+	swag init --generalInfo cmd/coordd/main.go --dir . --output docs/mkdocs/api/ --outputTypes yaml --parseInternal --parseDependency
 
 lint-openapi: swagger
 	vacuum lint docs/swagger.yaml
