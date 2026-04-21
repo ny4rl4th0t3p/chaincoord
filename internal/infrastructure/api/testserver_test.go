@@ -129,7 +129,7 @@ func newHarness(t *testing.T) *harness {
 	allowlistRepo := &thinCoordinatorAllowlist{data: make(map[string]*ports.CoordinatorAllowlistEntry)}
 	srv := api.NewServer(zerolog.Nop(), "", nil, authSvc, launchSvc, jrSvc, propSvc, readinessSvc,
 		sessions, &thinSSEBroker{}, genesisStore, auditLogReader, nil, allowlistRepo,
-		config.LaunchPolicyOpen, false, 32<<20)
+		config.LaunchPolicyOpen, false, 32<<20, false)
 
 	return &harness{
 		server:     srv,
@@ -182,7 +182,50 @@ func newHarnessConfig(t *testing.T, adminAddrs []string, launchPolicy string) *h
 
 	allowlistRepo := &thinCoordinatorAllowlist{data: make(map[string]*ports.CoordinatorAllowlistEntry)}
 	srv := api.NewServer(zerolog.Nop(), "", adminAddrs, authSvc, launchSvc, jrSvc, propSvc, readinessSvc,
-		sessions, &thinSSEBroker{}, genesisStore, auditLogReader, nil, allowlistRepo, launchPolicy, false, 32<<20)
+		sessions, &thinSSEBroker{}, genesisStore, auditLogReader, nil, allowlistRepo, launchPolicy, false, 32<<20, false)
+
+	return &harness{
+		server:     srv,
+		sessions:   sessions,
+		challenges: challenges,
+		launches:   launchRepo,
+		joinReqs:   jrRepo,
+		proposals:  propRepo,
+		readiness:  readinessRepo,
+		genesis:    genesisStore,
+		auditLog:   auditLogReader,
+		allowlist:  allowlistRepo,
+	}
+}
+
+// newHarnessRateLimitDisabled builds a harness with all per-IP rate limiters disabled.
+func newHarnessRateLimitDisabled(t *testing.T) *harness {
+	t.Helper()
+
+	sessions := &thinSessionStore{data: make(map[string]string)}
+	challenges := &thinChallengeStore{data: make(map[string]string)}
+	nonces := &thinNonceStore{seen: make(map[string]struct{})}
+	verifier := &thinVerifier{}
+	launchRepo := &thinLaunchRepo{data: make(map[uuid.UUID]*launch.Launch)}
+	genesisStore := newThinGenesisStore(t)
+	auditLogReader := &thinAuditLogReader{}
+	auditLogWriter := &thinAuditLogWriter{}
+	events := &thinEventPublisher{}
+	tx := &thinTransactor{}
+	jrRepo := &thinJoinRequestRepo{data: make(map[uuid.UUID]*joinrequest.JoinRequest)}
+	propRepo := &thinProposalRepo{data: make(map[uuid.UUID]*proposal.Proposal)}
+	readinessRepo := &thinReadinessRepo{data: make(map[uuid.UUID]*launch.ReadinessConfirmation)}
+
+	authSvc := services.NewAuthService(challenges, sessions, nonces, verifier)
+	launchSvc := services.NewLaunchService(launchRepo, jrRepo, readinessRepo, genesisStore, events, auditLogWriter)
+	jrSvc := services.NewJoinRequestService(launchRepo, jrRepo, nonces, verifier)
+	propSvc := services.NewProposalService(launchRepo, jrRepo, propRepo, readinessRepo, nonces, verifier, events, auditLogWriter, tx)
+	readinessSvc := services.NewReadinessService(launchRepo, jrRepo, readinessRepo, nonces, verifier)
+
+	allowlistRepo := &thinCoordinatorAllowlist{data: make(map[string]*ports.CoordinatorAllowlistEntry)}
+	srv := api.NewServer(zerolog.Nop(), "", nil, authSvc, launchSvc, jrSvc, propSvc, readinessSvc,
+		sessions, &thinSSEBroker{}, genesisStore, auditLogReader, nil, allowlistRepo,
+		config.LaunchPolicyOpen, false, 32<<20, true)
 
 	return &harness{
 		server:     srv,
@@ -225,7 +268,7 @@ func newHarnessHostMode(t *testing.T, maxBytes int64) *harness {
 	allowlistRepo := &thinCoordinatorAllowlist{data: make(map[string]*ports.CoordinatorAllowlistEntry)}
 	srv := api.NewServer(zerolog.Nop(), "", nil, authSvc, launchSvc, jrSvc, propSvc, readinessSvc,
 		sessions, &thinSSEBroker{}, genesisStore, auditLogReader, nil, allowlistRepo,
-		config.LaunchPolicyOpen, true, maxBytes)
+		config.LaunchPolicyOpen, true, maxBytes, false)
 
 	return &harness{
 		server:     srv,

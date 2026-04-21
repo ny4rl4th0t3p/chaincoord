@@ -83,6 +83,14 @@ type ChallengeStore interface {
 	Consume(ctx context.Context, operatorAddr string) (challenge string, err error)
 }
 
+// ChallengeRateLimiter enforces per-operator request limits for challenge issuance.
+// Implementations are responsible for both checking and recording each attempt.
+type ChallengeRateLimiter interface {
+	// Allow checks whether operatorAddr is within the rate limit and records the
+	// attempt. Returns ErrTooManyRequests if the limit has been exceeded.
+	Allow(ctx context.Context, operatorAddr string) error
+}
+
 // NonceStore tracks used nonces for replay protection.
 // Nonces are stored with a TTL and rejected if seen again within that window.
 type NonceStore interface {

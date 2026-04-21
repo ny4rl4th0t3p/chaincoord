@@ -220,6 +220,46 @@ func TestHandleAuthChallenge_RateLimited(t *testing.T) {
 	assertStatusCode(t, w, http.StatusTooManyRequests)
 }
 
+func TestHandleAuthChallenge_RateLimitDisabled(t *testing.T) {
+	h := newHarnessRateLimitDisabled(t)
+	body := jsonBody(`{"operator_address":"` + testAddr1 + `"}`)
+	// Send more requests than the default per-minute limit (challengeRatePerMin=10).
+	// All must succeed — the HTTP middleware rate limiter must be bypassed.
+	for i := range 15 {
+		w := h.doJSON("POST", "/auth/challenge", body)
+		if w.Code == http.StatusTooManyRequests {
+			t.Fatalf("request %d: got 429; rate limiter not disabled", i+1)
+		}
+		assertStatusCode(t, w, http.StatusOK)
+	}
+}
+
+func TestValidatorWriteEndpoints_RateLimitDisabled(t *testing.T) {
+	h := newHarnessRateLimitDisabled(t)
+	l := testLaunch()
+	h.launches.data[l.ID] = l
+	tok := h.seedSession(testAddr1)
+	path := "/launch/" + l.ID.String() + "/join"
+	body := jsonBody(`{
+		"operator_address":"` + testAddr1 + `",
+		"moniker":"val",
+		"peer_address":"` + testPeerAddress + `",
+		"consensus_pub_key":"AAAA",
+		"nonce":"n1",
+		"timestamp":"` + nowTS() + `",
+		"signature":"` + testSig + `"
+	}`)
+	// Send more requests than the default per-minute limit (validatorRatePerMin=60).
+	// All must succeed — the HTTP middleware rate limiter must be bypassed.
+	for i := range 65 {
+		h.joinReqs.data = make(map[uuid.UUID]*joinrequest.JoinRequest) // reset so store doesn't conflict
+		w := h.doAuthJSON("POST", path, body, tok)
+		if w.Code == http.StatusTooManyRequests {
+			t.Fatalf("request %d: got 429; validator rate limiter not disabled", i+1)
+		}
+	}
+}
+
 // ---- POST /auth/verify ------------------------------------------------------
 
 func TestHandleAuthVerify_Success(t *testing.T) {

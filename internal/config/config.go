@@ -62,6 +62,11 @@ type Config struct {
 	// where RPC hosts are internal container names, not user-controlled input.
 	InsecureNoSSRFCheck bool `mapstructure:"insecure_no_ssrf_check"`
 
+	// InsecureNoRateLimit disables all per-IP rate limiters (auth challenge and validator write endpoints).
+	// Only for use in automated test environments where many requests are
+	// issued in rapid succession from a single IP.
+	InsecureNoRateLimit bool `mapstructure:"insecure_no_rate_limit"`
+
 	// JWTPrivKeyB64 is a base64-encoded Ed25519 seed used to sign session JWTs.
 	// Must be different from AuditPrivKeyB64. Generate with: coordd keygen
 	// Can also be provided via a file path using jwt_private_key_file.
@@ -109,6 +114,7 @@ func Load(v *viper.Viper, cfgFile string) (*Config, error) {
 	_ = v.BindEnv("tls_key", "COORD_TLS_KEY")
 	_ = v.BindEnv("insecure_no_tls", "COORD_INSECURE_NO_TLS")
 	_ = v.BindEnv("insecure_no_ssrf_check", "COORD_INSECURE_NO_SSRF_CHECK")
+	_ = v.BindEnv("insecure_no_rate_limit", "COORD_INSECURE_NO_RATE_LIMIT")
 	_ = v.BindEnv("genesis_host_mode", "COORD_GENESIS_HOST_MODE")
 	_ = v.BindEnv("genesis_max_bytes", "COORD_GENESIS_MAX_BYTES")
 	_ = v.BindEnv("jwt_private_key", "COORD_JWT_PRIVATE_KEY")

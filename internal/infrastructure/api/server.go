@@ -29,6 +29,7 @@ type Server struct {
 	launchPolicy         string              // "open" or "restricted"
 	genesisHostMode      bool                // true → accept raw file uploads (Option C)
 	genesisMaxBytes      int64               // max raw upload size when host mode is on
+	disableRateLimit     bool                // true → skip all per-IP rate limiters (test only)
 	auth                 *services.AuthService
 	launches             *services.LaunchService
 	joinReqs             *services.JoinRequestService
@@ -54,6 +55,7 @@ type sseSubscriber interface {
 // adminAddresses is the list of operator addresses permitted to call admin-only endpoints.
 // genesisHostMode enables Option C (raw file upload/serve); when false only attestor mode is accepted.
 // genesisMaxBytes is the maximum raw genesis upload size (only relevant when genesisHostMode is true).
+// disableRateLimit bypasses all per-IP rate limiters; only for automated test environments.
 func NewServer(
 	log zerolog.Logger,
 	corsOriginsCSV string,
@@ -72,6 +74,7 @@ func NewServer(
 	launchPolicy string,
 	genesisHostMode bool,
 	genesisMaxBytes int64,
+	disableRateLimit bool,
 ) *Server {
 	var origins []string
 	if corsOriginsCSV != "" {
@@ -94,6 +97,7 @@ func NewServer(
 		launchPolicy:         launchPolicy,
 		genesisHostMode:      genesisHostMode,
 		genesisMaxBytes:      genesisMaxBytes,
+		disableRateLimit:     disableRateLimit,
 		auth:                 auth,
 		launches:             launches,
 		joinReqs:             joinReqs,
@@ -178,8 +182,12 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/admin/coordinators", s.requireAdmin(s.handleCoordinatorList))
 	r.Delete("/admin/sessions/{address}", s.requireAdmin(s.handleAdminRevokeAllSessions))
 
-	// Auth endpoints — challenge is strict (10 req/IP/min); verify and revoke are unthrottled.
-	r.With(httprate.LimitByIP(challengeRatePerMin, time.Minute)).Post("/auth/challenge", requireJSONPOST(s.handleAuthChallenge))
+	// Auth endpoints — challenge is rate-limited by IP unless disabled (e.g. in tests).
+	if s.disableRateLimit {
+		r.Post("/auth/challenge", requireJSONPOST(s.handleAuthChallenge))
+	} else {
+		r.With(httprate.LimitByIP(challengeRatePerMin, time.Minute)).Post("/auth/challenge", requireJSONPOST(s.handleAuthChallenge))
+	}
 	r.Post("/auth/verify", requireJSONPOST(s.handleAuthVerify))
 	r.Delete("/auth/session", s.handleAuthRevoke)
 	r.Get("/auth/session", s.handleAuthSessionInfo)
@@ -208,7 +216,9 @@ func (s *Server) Handler() http.Handler {
 
 	// Validator write endpoints — rate-limited to 60 req/IP/min (abuse prevention).
 	r.Group(func(r chi.Router) {
-		r.Use(httprate.LimitByIP(validatorRatePerMin, time.Minute))
+		if !s.disableRateLimit {
+			r.Use(httprate.LimitByIP(validatorRatePerMin, time.Minute))
+		}
 
 		r.Post("/launch/{id}/join", s.jsonPOST(s.handleJoinSubmit))
 		r.Post("/launch/{id}/proposal", s.jsonPOST(s.handleProposalRaise))
