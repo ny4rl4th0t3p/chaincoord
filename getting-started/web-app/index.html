@@ -1093,6 +1093,14 @@
 <h1 id="web-app">Web App<a class="headerlink" href="#web-app" title="Permanent link">&para;</a></h1>
 <p>The <code>web/app/</code> directory is a React + TypeScript frontend that lets coordinators and validators interact with the full launch lifecycle from a browser wallet (Keplr or Leap) — no CLI required.</p>
 <p>For setup and infrastructure, see <a href="../dev-environment/">Dev Environment</a>.</p>
+<div class="admonition danger">
+<p class="admonition-title">Proof of concept — not for production use</p>
+<p>chaincoord is research-grade software. APIs, data formats, and behaviours may change without notice. <strong>Do not use it for mainnet launches or any environment where correctness and availability are required.</strong></p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Web UI not fully validated</p>
+<p>The frontend has not been fully validated end-to-end. Visual and interaction regressions may exist even when the full test suite passes.</p>
+</div>
 <hr />
 <h2 id="sign-in-paths">Sign-in paths<a class="headerlink" href="#sign-in-paths" title="Permanent link">&para;</a></h2>
 <p>There are two distinct authentication paths depending on your role.</p>
