@@ -62,9 +62,9 @@ type Config struct {
 	// where RPC hosts are internal container names, not user-controlled input.
 	InsecureNoSSRFCheck bool `mapstructure:"insecure_no_ssrf_check"`
 
-	// InsecureNoRateLimit disables all per-IP rate limiters (auth challenge and validator write endpoints).
-	// Only for use in automated test environments where many requests are
-	// issued in rapid succession from a single IP.
+	// InsecureNoRateLimit disables all rate limiters: the HTTP per-IP middleware on auth challenge
+	// and validator write endpoints, and the storage-layer per-operator challenge rate limiter.
+	// Only for use in automated test environments.
 	InsecureNoRateLimit bool `mapstructure:"insecure_no_rate_limit"`
 
 	// JWTPrivKeyB64 is a base64-encoded Ed25519 seed used to sign session JWTs.
@@ -142,27 +142,31 @@ func Load(v *viper.Viper, cfgFile string) (*Config, error) {
 		}
 	}
 
-	// If audit_private_key is empty but audit_private_key_file is set, read the
-	// seed from the file (analogous to the _FILE convention used by secrets managers).
-	if cfg.AuditPrivKeyB64 == "" && cfg.AuditPrivKeyFile != "" {
-		data, err := os.ReadFile(cfg.AuditPrivKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("config: reading audit_private_key_file: %w", err)
-		}
-		cfg.AuditPrivKeyB64 = strings.TrimSpace(string(data))
-	}
-
-	// If jwt_private_key is empty but jwt_private_key_file is set, read the seed
-	// from the file (analogous to the _FILE convention used by secrets managers).
-	if cfg.JWTPrivKeyB64 == "" && cfg.JWTPrivKeyFile != "" {
-		data, err := os.ReadFile(cfg.JWTPrivKeyFile)
-		if err != nil {
-			return nil, fmt.Errorf("config: reading jwt_private_key_file: %w", err)
-		}
-		cfg.JWTPrivKeyB64 = strings.TrimSpace(string(data))
+	if err := cfg.loadKeyFiles(); err != nil {
+		return nil, err
 	}
 
 	return &cfg, cfg.validate()
+}
+
+// loadKeyFiles resolves _FILE variants for private key fields, reading key
+// material from the referenced path when the inline value is absent.
+func (c *Config) loadKeyFiles() error {
+	if c.AuditPrivKeyB64 == "" && c.AuditPrivKeyFile != "" {
+		data, err := os.ReadFile(c.AuditPrivKeyFile)
+		if err != nil {
+			return fmt.Errorf("config: reading audit_private_key_file: %w", err)
+		}
+		c.AuditPrivKeyB64 = strings.TrimSpace(string(data))
+	}
+	if c.JWTPrivKeyB64 == "" && c.JWTPrivKeyFile != "" {
+		data, err := os.ReadFile(c.JWTPrivKeyFile)
+		if err != nil {
+			return fmt.Errorf("config: reading jwt_private_key_file: %w", err)
+		}
+		c.JWTPrivKeyB64 = strings.TrimSpace(string(data))
+	}
+	return nil
 }
 
 func (c *Config) validate() error {

@@ -156,6 +156,13 @@ func serveAndWait(httpServer *http.Server, cfg *config.Config, logger zerolog.Lo
 	return nil
 }
 
+func monitorURLValidatorFor(insecureNoSSRFCheck bool) func(string) error {
+	if insecureNoSSRFCheck {
+		return netutil.ValidateRPCURLFormat
+	}
+	return netutil.ValidateRPCURL
+}
+
 func runServe(cmd *cobra.Command, _ []string) error {
 	// --- Config ----------------------------------------------------------
 	cfg, err := loadServeConfig(cmd)
@@ -256,11 +263,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	jobCtx, stopJobs := context.WithCancel(context.Background())
 	defer stopJobs()
 	go jobs.RunProposalExpiry(jobCtx, proposalSvc, logger, time.Minute)
-	monitorURLValidator := netutil.ValidateRPCURL
-	if cfg.InsecureNoSSRFCheck {
-		monitorURLValidator = netutil.ValidateRPCURLFormat
-	}
-	go jobs.RunLaunchMonitor(jobCtx, launchRepo, sseBroker, logger, time.Minute, monitorURLValidator)
+	go jobs.RunLaunchMonitor(jobCtx, launchRepo, sseBroker, logger, time.Minute, monitorURLValidatorFor(cfg.InsecureNoSSRFCheck))
 
 	// --- Start + graceful shutdown ---------------------------------------
 	return serveAndWait(httpServer, cfg, logger, stopJobs)
