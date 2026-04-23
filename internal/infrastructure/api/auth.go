@@ -19,7 +19,7 @@ type challengeRequest struct {
 // Response: { "challenge": "..." }
 //
 // @Summary      Request an auth challenge
-// @Description  Issues a short-lived challenge for the given operator address. Rate-limited to 10 req/IP/min.
+// @Description  Issues a short-lived challenge for the given operator address. Rate-limited to 10 req/IP/min and 5 req/operator/5min.
 // @Tags         auth
 // @Accept       json
 // @Produce      json

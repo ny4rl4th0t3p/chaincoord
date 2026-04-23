@@ -460,18 +460,19 @@ func (*LaunchRepository) scanLaunchRow(rows *sql.Rows) (*launch.Launch, error) {
 
 func scanLaunchCols(scan func(dest ...any) error) (*launch.Launch, error) {
 	var (
-		idStr, chainID, chainName, bech32Prefix, binaryName, binaryVersion, binarySHA256 string
-		repoURL, repoCommit                                                              string
-		genesisTime                                                                      *string
-		denom, minSelfDelegation                                                         string
-		maxCommRate, maxCommChangeRate                                                   string
-		gentxDeadline, appWindowOpen                                                     string
-		minValCount                                                                      int
-		launchType, visibility, status                                                   string
-		initialGenesisSHA256, finalGenesisSHA256                                         string
-		monitorRPCURL                                                                    string
-		createdAt, updatedAt                                                             string
-		version                                                                          int
+		idStr, chainID, chainName, binaryName, binaryVersion, binarySHA256 string
+		repoURL, repoCommit                                                string
+		genesisTime                                                        *string
+		denom, minSelfDelegation                                           string
+		maxCommRate, maxCommChangeRate                                     string
+		gentxDeadline, appWindowOpen                                       string
+		minValCount                                                        int
+		launchType, visibility, status                                     string
+		initialGenesisSHA256, finalGenesisSHA256                           string
+		monitorRPCURL                                                      string
+		createdAt, updatedAt                                               string
+		version                                                            int
+		bech32Prefix                                                       string // added by migration 0002; scanned last
 	)
 	err := scan(
 		&idStr, &chainID, &chainName, &binaryName, &binaryVersion, &binarySHA256,

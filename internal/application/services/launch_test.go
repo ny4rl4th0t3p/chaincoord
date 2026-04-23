@@ -657,11 +657,37 @@ func TestLaunchService_OpenWindow_NotFound(t *testing.T) {
 	}
 }
 
-func TestLaunchService_OpenWindow_WrongStatus(t *testing.T) {
-	l := testLaunch() // DRAFT — cannot open window
+func TestLaunchService_OpenWindow_DraftWithoutGenesis_BadRequest(t *testing.T) {
+	l := testLaunch() // DRAFT, no genesis uploaded
 	svc := newLaunchSvc(newFakeLaunchRepo(l), newFakeGenesisStore())
-	if err := svc.OpenWindow(context.Background(), l.ID, testAddr1); err == nil {
-		t.Fatal("expected error opening window on DRAFT launch")
+	err := svc.OpenWindow(context.Background(), l.ID, testAddr1)
+	if !errors.Is(err, ports.ErrBadRequest) {
+		t.Fatalf("want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestLaunchService_OpenWindow_WrongStatus(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowOpen // already open — invalid transition
+	svc := newLaunchSvc(newFakeLaunchRepo(l), newFakeGenesisStore())
+	err := svc.OpenWindow(context.Background(), l.ID, testAddr1)
+	if !errors.Is(err, ports.ErrBadRequest) {
+		t.Fatalf("want ErrBadRequest, got %v", err)
+	}
+}
+
+func TestLaunchService_OpenWindow_AutoPublishFromDraft(t *testing.T) {
+	l := testLaunch() // DRAFT
+	l.InitialGenesisSHA256 = "abc123"
+	repo := newFakeLaunchRepo(l)
+	svc := newLaunchSvc(repo, newFakeGenesisStore())
+
+	if err := svc.OpenWindow(context.Background(), l.ID, testAddr1); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	got, _ := repo.FindByID(context.Background(), l.ID)
+	if got.Status != launch.StatusWindowOpen {
+		t.Errorf("want WINDOW_OPEN, got %s", got.Status)
 	}
 }
 
@@ -752,6 +778,10 @@ func newLaunchSvcWithReadiness(launchRepo *fakeLaunchRepo, readinessRepo *fakeRe
 	return NewLaunchService(launchRepo, newFakeJoinRequestRepo(), readinessRepo, newFakeGenesisStore(), &fakeEventPublisher{}, &fakeAuditLogWriter{})
 }
 
+func newLaunchSvcWithAudit(launchRepo *fakeLaunchRepo, genesisStore *fakeGenesisStore, audit *fakeAuditLogWriter) *LaunchService {
+	return NewLaunchService(launchRepo, newFakeJoinRequestRepo(), newFakeReadinessRepo(), genesisStore, &fakeEventPublisher{}, audit)
+}
+
 func TestLaunchService_CancelLaunch_Success(t *testing.T) {
 	l := testLaunch() // DRAFT, lead = testAddr1
 	lRepo := newFakeLaunchRepo(l)
@@ -822,5 +852,127 @@ func TestLaunchService_CancelLaunch_NotGenesisReady_DoesNotInvalidate(t *testing
 	}
 	if !readinessRepo.data[rc.ID].IsValid() {
 		t.Error("readiness confirmation should not have been invalidated for non-GENESIS_READY cancel")
+	}
+}
+
+// ---- audit log tests ----
+
+func TestLaunchService_CreateLaunch_AuditEvent(t *testing.T) {
+	audit := &fakeAuditLogWriter{}
+	svc := newLaunchSvcWithAudit(newFakeLaunchRepo(), newFakeGenesisStore(), audit)
+
+	l, err := svc.CreateLaunch(context.Background(), CreateLaunchInput{
+		Record:     testChainRecord(),
+		LaunchType: launch.LaunchTypeTestnet,
+		Visibility: launch.VisibilityPublic,
+		Committee:  testCommittee(1, 1),
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(audit.events) != 1 {
+		t.Fatalf("want 1 audit event, got %d", len(audit.events))
+	}
+	ev := audit.events[0]
+	if ev.EventName != "LaunchCreated" {
+		t.Errorf("want event LaunchCreated, got %q", ev.EventName)
+	}
+	if ev.LaunchID != l.ID.String() {
+		t.Errorf("want launch ID %s, got %s", l.ID, ev.LaunchID)
+	}
+}
+
+func TestLaunchService_CancelLaunch_AuditEvent(t *testing.T) {
+	l := testLaunch()
+	audit := &fakeAuditLogWriter{}
+	svc := NewLaunchService(newFakeLaunchRepo(l), newFakeJoinRequestRepo(), newFakeReadinessRepo(), newFakeGenesisStore(), &fakeEventPublisher{}, audit)
+
+	if err := svc.CancelLaunch(context.Background(), l.ID, testAddr1); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(audit.events) != 1 {
+		t.Fatalf("want 1 audit event, got %d", len(audit.events))
+	}
+	ev := audit.events[0]
+	if ev.EventName != "LaunchCancelled" {
+		t.Errorf("want event LaunchCancelled, got %q", ev.EventName)
+	}
+	if ev.LaunchID != l.ID.String() {
+		t.Errorf("want launch ID %s, got %s", l.ID, ev.LaunchID)
+	}
+}
+
+func TestLaunchService_OpenWindow_AuditEvent(t *testing.T) {
+	l := testLaunch()
+	if err := l.Publish("abc123"); err != nil {
+		t.Fatal(err)
+	}
+	audit := &fakeAuditLogWriter{}
+	svc := newLaunchSvcWithAudit(newFakeLaunchRepo(l), newFakeGenesisStore(), audit)
+
+	if err := svc.OpenWindow(context.Background(), l.ID, testAddr1); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(audit.events) != 1 {
+		t.Fatalf("want 1 audit event, got %d", len(audit.events))
+	}
+	ev := audit.events[0]
+	if ev.EventName != "WindowOpened" {
+		t.Errorf("want event WindowOpened, got %q", ev.EventName)
+	}
+	if ev.LaunchID != l.ID.String() {
+		t.Errorf("want launch ID %s, got %s", l.ID, ev.LaunchID)
+	}
+}
+
+func TestLaunchService_UploadInitialGenesis_AuditEvent(t *testing.T) {
+	l := testLaunch()
+	audit := &fakeAuditLogWriter{}
+	svc := newLaunchSvcWithAudit(newFakeLaunchRepo(l), newFakeGenesisStore(), audit)
+
+	hash, err := svc.UploadInitialGenesis(context.Background(), l.ID, validGenesisJSON(l.Record.ChainID))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(audit.events) != 1 {
+		t.Fatalf("want 1 audit event, got %d", len(audit.events))
+	}
+	ev := audit.events[0]
+	if ev.EventName != "InitialGenesisUploaded" {
+		t.Errorf("want event InitialGenesisUploaded, got %q", ev.EventName)
+	}
+	if ev.LaunchID != l.ID.String() {
+		t.Errorf("want launch ID %s, got %s", l.ID, ev.LaunchID)
+	}
+	if string(ev.Payload) == "" {
+		t.Error("want non-empty payload")
+	}
+	_ = hash
+}
+
+func TestLaunchService_UploadFinalGenesis_AuditEvent(t *testing.T) {
+	l := testLaunch()
+	l.Status = launch.StatusWindowClosed
+	audit := &fakeAuditLogWriter{}
+	svc := newLaunchSvcWithAudit(newFakeLaunchRepo(l), newFakeGenesisStore(), audit)
+
+	_, err := svc.UploadFinalGenesis(context.Background(), l.ID, validFinalGenesisJSON(l.Record.ChainID))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(audit.events) != 1 {
+		t.Fatalf("want 1 audit event, got %d", len(audit.events))
+	}
+	ev := audit.events[0]
+	if ev.EventName != "FinalGenesisUploaded" {
+		t.Errorf("want event FinalGenesisUploaded, got %q", ev.EventName)
+	}
+	if ev.LaunchID != l.ID.String() {
+		t.Errorf("want launch ID %s, got %s", l.ID, ev.LaunchID)
 	}
 }

@@ -85,8 +85,8 @@ func launchToJSON(l *launch.Launch) launchJSON {
 // createLaunchRequest is the body for POST /launch.
 type createLaunchRequest struct {
 	Record     chainRecordJSON      `json:"record"`
-	LaunchType string               `json:"launch_type" example:"mainnet"`
-	Visibility string               `json:"visibility" example:"public"`
+	LaunchType string               `json:"launch_type" example:"MAINNET"`
+	Visibility string               `json:"visibility" example:"PUBLIC"`
 	Allowlist  []string             `json:"allowlist"`
 	Committee  committeeRequestJSON `json:"committee"`
 }
