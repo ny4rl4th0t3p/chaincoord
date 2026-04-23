@@ -1145,36 +1145,6 @@ func TestChallengeStore_Issue(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "exceeding per-operator rate limit returns ErrTooManyRequests",
-			run: func(t *testing.T, store *ChallengeStore) {
-				ctx := context.Background()
-				// Exhaust the rate limit (challengeRateMaxReqs requests).
-				for i := range challengeRateMaxReqs {
-					if _, err := store.Issue(ctx, addr1); err != nil {
-						t.Fatalf("Issue %d: %v", i+1, err)
-					}
-				}
-				// The next request must be rejected.
-				_, err := store.Issue(ctx, addr1)
-				if !errors.Is(err, ports.ErrTooManyRequests) {
-					t.Fatalf("want ErrTooManyRequests, got %v", err)
-				}
-			},
-		},
-		{
-			name: "rate limit is per-operator: a different address is not affected",
-			run: func(t *testing.T, store *ChallengeStore) {
-				ctx := context.Background()
-				for range challengeRateMaxReqs {
-					store.Issue(ctx, addr1) //nolint:errcheck // we do not need to check this error
-				}
-				// addr2 must still be accepted.
-				if _, err := store.Issue(ctx, addr2); err != nil {
-					t.Fatalf("Issue for addr2 after addr1 exhausted limit: %v", err)
-				}
-			},
-		},
 	}
 
 	for _, tc := range tests {
@@ -1392,6 +1362,47 @@ func TestCoordinatorAllowlistRepo(t *testing.T) {
 		}
 		if len(entries2) != 1 {
 			t.Errorf("page 2 entries: got %d, want 1", len(entries2))
+		}
+	})
+}
+
+// ---- ChallengeRateLimiterStore ----
+
+func TestChallengeRateLimiterStore_Allow(t *testing.T) {
+	t.Parallel()
+
+	t.Run("allows requests up to the limit", func(t *testing.T) {
+		t.Parallel()
+		store := NewChallengeRateLimiterStore(openTestDB(t))
+		ctx := context.Background()
+		for i := range challengeRateMaxReqs {
+			if err := store.Allow(ctx, addr1); err != nil {
+				t.Fatalf("Allow %d: unexpected error: %v", i+1, err)
+			}
+		}
+	})
+
+	t.Run("exceeding the limit returns ErrTooManyRequests", func(t *testing.T) {
+		t.Parallel()
+		store := NewChallengeRateLimiterStore(openTestDB(t))
+		ctx := context.Background()
+		for range challengeRateMaxReqs {
+			_ = store.Allow(ctx, addr1)
+		}
+		if err := store.Allow(ctx, addr1); !errors.Is(err, ports.ErrTooManyRequests) {
+			t.Fatalf("want ErrTooManyRequests, got %v", err)
+		}
+	})
+
+	t.Run("rate limit is per-operator: a different address is not affected", func(t *testing.T) {
+		t.Parallel()
+		store := NewChallengeRateLimiterStore(openTestDB(t))
+		ctx := context.Background()
+		for range challengeRateMaxReqs {
+			_ = store.Allow(ctx, addr1)
+		}
+		if err := store.Allow(ctx, addr2); err != nil {
+			t.Fatalf("Allow for addr2 after addr1 exhausted limit: %v", err)
 		}
 	})
 }
