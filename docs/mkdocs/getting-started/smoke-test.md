@@ -3,7 +3,7 @@
 The smoke test runs the full chaincoord protocol end-to-end inside Docker: coordinator setup, four validator applications, M-of-N approvals, genesis assembly, and block production — all verified against a live `gaiad` network.
 
 !!! note "Cosmos SDK chain required"
-    The smoke test uses `gaiad` (Gaia / Cosmos Hub) as the validator binary. It must be available inside the Docker image. The test is intentionally tied to a real Cosmos SDK binary to validate the gentx and genesis assembly steps.
+    The smoke test uses `gaiad` (Gaia / Cosmos Hub) as the validator binary. It is bundled in `Dockerfile.smoke` and downloaded at image build time. The test is intentionally tied to a real Cosmos SDK binary to validate the gentx and genesis assembly steps.
 
 ---
 
@@ -25,7 +25,7 @@ This single target:
 
 1. Brings down any previous run (`smoke-test-down`)
 2. Generates `docker/secrets/audit_key` and `docker/secrets/jwt_key` if missing (`smoke-test-secrets`)
-3. Builds all Docker images (`docker-build`)
+3. Builds all Docker images from `Dockerfile.smoke` (via `--build`)
 4. Starts the Compose stack and runs to completion
 5. Tears everything down on exit
 
@@ -73,3 +73,9 @@ Removes containers and volumes without rebuilding or re-running the test.
 ## Signing
 
 All signing in the smoke test is done by `smoke-signer` using deterministic secp256k1 keys derived from an index (0 = coordinator, 1–4 = validators). This removes the need for a real keychain or hardware wallet in CI.
+
+---
+
+## Docker image
+
+The smoke test uses `docker/Dockerfile.smoke`, which is separate from the lean `docker/Dockerfile` used by the dev environment. `Dockerfile.smoke` builds `coordd` + `smoke-signer` and downloads `gaiad` — none of which belong in a standard `coordd` deployment image.

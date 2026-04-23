@@ -120,6 +120,6 @@ Terminal state. The chain is live.
 
 ## CANCELED
 
-Triggered by: Lead coordinator calls `DELETE /launch/:id` (or a dedicated cancel endpoint) from any non-terminal state.
+Triggered by: Lead coordinator calls `POST /launch/:id/cancel` from any non-terminal state.
 
 Terminal state. No further transitions are possible.

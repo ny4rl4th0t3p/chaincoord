@@ -34,17 +34,22 @@ Timestamps are monotonically non-decreasing within a log file. A timestamp that 
 
 | Event | Trigger |
 |---|---|
+| `LaunchCreated` | Launch created — committee and chain record set |
 | `ChainRecordPublished` | `PUBLISH_CHAIN_RECORD` proposal executed — launch moves to `PUBLISHED` |
+| `WindowOpened` | Lead coordinator calls `POST /launch/:id/open-window` — launch moves to `WINDOW_OPEN` |
 | `WindowClosed` | `CLOSE_APPLICATION_WINDOW` proposal executed — launch moves to `WINDOW_CLOSED` |
+| `InitialGenesisUploaded` | Initial genesis file uploaded or registered via attestor URL |
+| `FinalGenesisUploaded` | Final genesis file uploaded or registered via attestor URL |
 | `GenesisPublished` | `PUBLISH_GENESIS` proposal executed — launch moves to `GENESIS_READY` |
 | `GenesisTimeUpdated` | `UPDATE_GENESIS_TIME` proposal executed |
 | `GenesisRevisionApproved` | `REVISE_GENESIS` proposal executed — launch reverts to `WINDOW_CLOSED` |
 | `ValidatorApproved` | `APPROVE_VALIDATOR` proposal executed |
 | `ValidatorRejected` | `REJECT_VALIDATOR` proposal executed |
 | `ValidatorRemoved` | `REMOVE_APPROVED_VALIDATOR` proposal executed |
+| `LaunchCancelled` | Lead coordinator cancels the launch |
 
 !!! note
-    Not all proposal action types emit audit events. Actions that mutate launch state directly without a domain event (e.g. `ADD_GENESIS_ACCOUNT`, `REPLACE_COMMITTEE_MEMBER`) are recorded in the database but do not produce audit log entries in the current implementation.
+    Proposal actions that do not directly transition launch state (e.g. `ADD_GENESIS_ACCOUNT`, `REPLACE_COMMITTEE_MEMBER`) are recorded in the database but do not produce audit log entries in the current implementation.
 
 ---
 

@@ -26,7 +26,7 @@ db_path: "./data/coord.db"
 audit_log_path: "./data/audit.jsonl"
 genesis_path: "./data/genesis"
 log_level: "debug"
-cors_origins: "http://localhost:5173"
+cors_origins: "http://localhost:3000"
 audit_private_key_file: "./data/audit_key"
 jwt_private_key_file: "./data/jwt_key"
 ```
@@ -44,23 +44,23 @@ chmod 600 data/audit_key data/jwt_key
 
 ### CORS
 
-The validator web app (built with Vite) runs on `http://localhost:5173` by default. Set `cors_origins` to that origin so the browser allows cross-origin requests:
+The web app (Next.js) runs on `http://localhost:3000` by default. Set `cors_origins` to that origin so the browser allows cross-origin requests (required for the SSE stream, which connects directly from the browser):
 
 ```yaml
 # config.yaml (dev)
-cors_origins: "http://localhost:5173"
+cors_origins: "http://localhost:3000"
 ```
 
 Or via environment variable:
 
 ```bash
-export COORD_CORS_ORIGINS="http://localhost:5173"
+export COORD_CORS_ORIGINS="http://localhost:3000"
 ```
 
 Multiple origins are comma-separated:
 
 ```bash
-export COORD_CORS_ORIGINS="http://localhost:5173,http://localhost:3000"
+export COORD_CORS_ORIGINS="http://localhost:3000,https://coord.example.com"
 ```
 
 > **Do not use `*` in development** unless you have no other option — `AllowCredentials: true` is set on the server, and browsers will reject credentialed requests to a wildcard origin. Use the exact origin instead.
@@ -162,6 +162,7 @@ Plain HTTP on loopback (`127.0.0.1` or `::1`) suppresses the warning automatical
 | `tls_cert` | `COORD_TLS_CERT` | `--tls-cert` | — | No |
 | `tls_key` | `COORD_TLS_KEY` | `--tls-key` | — | No |
 | `insecure_no_tls` | `COORD_INSECURE_NO_TLS` | `--insecure-no-tls` | `false` | No |
+| `insecure_no_rate_limit` | `COORD_INSECURE_NO_RATE_LIMIT` | `--insecure-no-rate-limit` | `false` | No |
 | `insecure_no_ssrf_check` | `COORD_INSECURE_NO_SSRF_CHECK` | — | `false` | No |
 
 ¹ Exactly one of `audit_private_key` (inline base64) or `audit_private_key_file` (path) must be set.  
@@ -219,6 +220,10 @@ Paths to a PEM-encoded TLS certificate and private key. Both must be set togethe
 ### `insecure_no_tls`
 
 Suppresses the startup warning when TLS is not configured and the listen address is not loopback. Set this when TLS is terminated upstream (load balancer, ingress, reverse proxy) and `coordd` binds plain HTTP on a private network interface. The Docker Compose file sets this automatically.
+
+### `insecure_no_rate_limit`
+
+Disables all rate limiters: the HTTP per-IP middleware on `POST /auth/challenge` (10 req/IP/min) and validator write endpoints (60 req/IP/min), and the storage-layer per-operator limit on challenge issuance (5 req/operator/5 min). **Only for automated test environments** — do not enable in production.
 
 ### `insecure_no_ssrf_check`
 
