@@ -29,6 +29,7 @@ func allRequired(v *viper.Viper) {
 }
 
 func TestLoad_Defaults(t *testing.T) {
+	t.Setenv("COORD_ADMIN_ADDRESSES", "")
 	v := newViper()
 	allRequired(v)
 	cfg, err := config.Load(v, "")
@@ -336,6 +337,56 @@ func TestLoad_AuditPrivateKeyFromFile(t *testing.T) {
 	}
 	if cfg.AuditPrivKeyB64 != testAuditKey {
 		t.Errorf("AuditPrivKeyB64 from file: got %q, want %q", cfg.AuditPrivKeyB64, testAuditKey)
+	}
+}
+
+func TestLoad_InsecureNoRateLimit(t *testing.T) {
+	v := newViper()
+	allRequired(v)
+	v.Set("insecure_no_rate_limit", true)
+	cfg, err := config.Load(v, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.InsecureNoRateLimit {
+		t.Error("InsecureNoRateLimit: expected true")
+	}
+}
+
+func TestLoad_InsecureNoRateLimitDefault(t *testing.T) {
+	v := newViper()
+	allRequired(v)
+	cfg, err := config.Load(v, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.InsecureNoRateLimit {
+		t.Error("InsecureNoRateLimit default: expected false")
+	}
+}
+
+func TestLoad_InsecureNoSSRFCheck(t *testing.T) {
+	v := newViper()
+	allRequired(v)
+	v.Set("insecure_no_ssrf_check", true)
+	cfg, err := config.Load(v, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.InsecureNoSSRFCheck {
+		t.Error("InsecureNoSSRFCheck: expected true")
+	}
+}
+
+func TestLoad_InsecureNoSSRFCheckDefault(t *testing.T) {
+	v := newViper()
+	allRequired(v)
+	cfg, err := config.Load(v, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.InsecureNoSSRFCheck {
+		t.Error("InsecureNoSSRFCheck default: expected false")
 	}
 }
 

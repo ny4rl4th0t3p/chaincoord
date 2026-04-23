@@ -247,7 +247,9 @@ type testServer struct {
 	client     *testClient
 }
 
-func startServer(t *testing.T) *testServer {
+// buildTestServer is the shared server-wiring logic.
+// admins is the list of operator addresses with admin privileges.
+func buildTestServer(t *testing.T, admins []string) *testServer {
 	t.Helper()
 
 	db, err := sqlite.Open(":memory:")
@@ -296,10 +298,10 @@ func startServer(t *testing.T) *testServer {
 	readinessSvc := services.NewReadinessService(launchRepo, joinReqRepo, readinessRepo, nonceStore, verifier)
 
 	apiServer := api.NewServer(
-		zerolog.Nop(), "", nil,
+		zerolog.Nop(), "", admins,
 		authSvc, launchSvc, joinReqSvc, proposalSvc, readinessSvc,
 		sessionStore, sseBroker, genesisStore, al,
-		al.PubKey(), allowlistRepo, "open", true, 64<<20,
+		al.PubKey(), allowlistRepo, "open", true, 64<<20, true,
 	)
 
 	ts := httptest.NewServer(apiServer.Handler())
@@ -310,6 +312,10 @@ func startServer(t *testing.T) *testServer {
 		launchRepo: launchRepo,
 		client:     newClient(ts.URL),
 	}
+}
+
+func startServer(t *testing.T) *testServer {
+	return buildTestServer(t, nil)
 }
 
 // setWindowOpen loads the launch from the repo, sets status to WINDOW_OPEN,
@@ -661,3 +667,607 @@ func confirmReadiness(t *testing.T, c *testClient, launchID string, v actor, gen
 type noopPublisher struct{}
 
 func (noopPublisher) Publish(_ domain.DomainEvent) {}
+
+// ── Additional helpers ────────────────────────────────────────────────────────
+
+// raiseProposalExpect raises a proposal and asserts the returned status equals wantStatus.
+// Use this for multi-committee scenarios where the proposal may not auto-execute.
+func raiseProposalExpect(t *testing.T, c *testClient, launchID string, coord actor, actionType proposal.ActionType, payload any, wantStatus string) string {
+	t.Helper()
+	payloadBytes, _ := json.Marshal(payload)
+	input := services.RaiseInput{
+		ActionType:      actionType,
+		Payload:         json.RawMessage(payloadBytes),
+		CoordinatorAddr: coord.addr,
+		Nonce:           newNonce(),
+		Timestamp:       nowTS(),
+	}
+	input.Signature = coord.sign(input)
+
+	var resp struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	mustDecode(t, c.do("POST", "/launch/"+launchID+"/proposal", input), http.StatusCreated, &resp)
+	if resp.Status != wantStatus {
+		t.Fatalf("proposal for action %s: want status %s, got %s", actionType, wantStatus, resp.Status)
+	}
+	return resp.ID
+}
+
+// signProposal submits a SIGN or VETO decision on an existing proposal and returns
+// the updated proposal status.
+func signProposal(t *testing.T, c *testClient, launchID, propID string, coord actor, decision proposal.Decision) string {
+	t.Helper()
+	input := services.SignInput{
+		CoordinatorAddr: coord.addr,
+		Decision:        decision,
+		Nonce:           newNonce(),
+		Timestamp:       nowTS(),
+	}
+	input.Signature = coord.sign(input)
+
+	var resp struct {
+		Status string `json:"status"`
+	}
+	mustDecode(t, c.do("POST", fmt.Sprintf("/launch/%s/proposal/%s/sign", launchID, propID), input), http.StatusOK, &resp)
+	return resp.Status
+}
+
+// makeCommitteeMember builds the committee member map for a given actor.
+func makeCommitteeMember(a actor, moniker string) map[string]any {
+	return map[string]any{
+		"address":     a.addr,
+		"moniker":     moniker,
+		"pub_key_b64": a.pubB64,
+	}
+}
+
+// createLaunch creates a launch with the given committee members/threshold and returns the launch ID.
+func createLaunch(t *testing.T, c *testClient, lead actor, members []map[string]any, thresholdM, totalN int) string {
+	t.Helper()
+	gentxDeadline := time.Now().Add(48 * time.Hour).UTC().Format(time.RFC3339)
+	windowOpen := time.Now().UTC().Format(time.RFC3339)
+
+	body := map[string]any{
+		"record": map[string]any{
+			"chain_id":                   "testchain-1",
+			"chain_name":                 "Test Chain",
+			"bech32_prefix":              "cosmos",
+			"binary_name":                "testchaind",
+			"binary_version":             "v1.0.0",
+			"binary_sha256":              "abc123",
+			"denom":                      "utest",
+			"min_self_delegation":        "1000000",
+			"max_commission_rate":        "0.20",
+			"max_commission_change_rate": "0.01",
+			"gentx_deadline":             gentxDeadline,
+			"application_window_open":    windowOpen,
+			"min_validator_count":        1,
+		},
+		"launch_type": "TESTNET",
+		"visibility":  "PUBLIC",
+		"committee": map[string]any{
+			"members":            members,
+			"threshold_m":        thresholdM,
+			"total_n":            totalN,
+			"lead_address":       lead.addr,
+			"creation_signature": base64.StdEncoding.EncodeToString(make([]byte, 64)),
+		},
+	}
+
+	var resp struct {
+		ID string `json:"id"`
+	}
+	mustDecode(t, c.do("POST", "/launch", body), http.StatusCreated, &resp)
+	if resp.ID == "" {
+		t.Fatal("no launch ID in response")
+	}
+	return resp.ID
+}
+
+// submitJoin submits a join request for a validator and returns the join request ID.
+func submitJoin(t *testing.T, c *testClient, launchID string, v actor) string {
+	t.Helper()
+	gentx := json.RawMessage(`{"body":{"messages":[{"@type":"/cosmos.staking.v1beta1.MsgCreateValidator"}]}}`)
+	input := services.SubmitInput{
+		ChainID:         "testchain-1",
+		OperatorAddress: v.addr,
+		PubKeyB64:       v.pubB64,
+		ConsensusPubKey: v.pubB64,
+		GentxJSON:       gentx,
+		PeerAddress:     "abcdef1234567890abcdef1234567890abcdef12@192.168.1.1:26656",
+		RPCEndpoint:     "https://192.168.1.1:26657",
+		Nonce:           newNonce(),
+		Timestamp:       nowTS(),
+	}
+	input.Signature = v.sign(input)
+
+	var resp struct {
+		ID string `json:"id"`
+	}
+	mustDecode(t, c.do("POST", "/launch/"+launchID+"/join", input), http.StatusCreated, &resp)
+	return resp.ID
+}
+
+// signerPair couples an authenticated client with its actor keypair.
+type signerPair struct {
+	c *testClient
+	a actor
+}
+
+// publishLaunch uploads an initial genesis and raises PUBLISH_CHAIN_RECORD so
+// the launch transitions DRAFT → PUBLISHED, then calls open-window → WINDOW_OPEN.
+// lead is the proposer; extras are additional signers needed to reach quorum
+// (e.g. pass a second coordinator for a 2-of-3 committee).
+func publishLaunch(t *testing.T, launchID string, lead signerPair, extras ...signerPair) {
+	t.Helper()
+	initialGenesis := []byte(`{"chain_id":"testchain-1"}`)
+	initialGenesisHash := sha256hex(initialGenesis)
+
+	mustDecode(t,
+		lead.c.doRaw("POST", "/launch/"+launchID+"/genesis?type=initial", "application/octet-stream", initialGenesis),
+		http.StatusOK, nil)
+
+	payloadBytes, _ := json.Marshal(proposal.PublishChainRecordPayload{InitialGenesisHash: initialGenesisHash})
+	input := services.RaiseInput{
+		ActionType:      proposal.ActionPublishChainRecord,
+		Payload:         json.RawMessage(payloadBytes),
+		CoordinatorAddr: lead.a.addr,
+		Nonce:           newNonce(),
+		Timestamp:       nowTS(),
+	}
+	input.Signature = lead.a.sign(input)
+
+	var propResp struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	}
+	mustDecode(t, lead.c.do("POST", "/launch/"+launchID+"/proposal", input), http.StatusCreated, &propResp)
+
+	// Sign with extra coordinators until quorum is reached.
+	for _, s := range extras {
+		if propResp.Status == "EXECUTED" {
+			break
+		}
+		propResp.Status = signProposal(t, s.c, launchID, propResp.ID, s.a, proposal.DecisionSign)
+	}
+
+	if propResp.Status != "EXECUTED" {
+		t.Fatalf("publishLaunch: PUBLISH_CHAIN_RECORD proposal did not execute (status=%s); provide enough signers to reach quorum", propResp.Status)
+	}
+
+	mustDecode(t, lead.c.do("POST", "/launch/"+launchID+"/open-window", nil), http.StatusOK, nil)
+}
+
+// ── TestE2E_AdminFlow ─────────────────────────────────────────────────────────
+
+func TestE2E_AdminFlow(t *testing.T) {
+	admin := newActor(t)
+	nonAdmin := newActor(t)
+	coordCandidate := newActor(t)
+
+	srv := buildTestServer(t, []string{admin.addr})
+	c := srv.client
+
+	adminToken := authenticate(t, c, admin)
+	adminClient := c.withToken(adminToken)
+
+	nonAdminToken := authenticate(t, c, nonAdmin)
+	nonAdminClient := c.withToken(nonAdminToken)
+
+	// Non-admin is rejected on admin endpoints.
+	resp := nonAdminClient.do("POST", "/admin/coordinators", map[string]string{"address": coordCandidate.addr})
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("non-admin POST /admin/coordinators: want 403, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Admin adds coordinator candidate.
+	var addResp struct {
+		Address string `json:"address"`
+		AddedBy string `json:"added_by"`
+	}
+	mustDecode(t, adminClient.do("POST", "/admin/coordinators", map[string]string{
+		"address": coordCandidate.addr,
+	}), http.StatusCreated, &addResp)
+	if addResp.Address != coordCandidate.addr {
+		t.Fatalf("add coordinator: want address %s, got %s", coordCandidate.addr, addResp.Address)
+	}
+	if addResp.AddedBy != admin.addr {
+		t.Fatalf("add coordinator: want added_by %s, got %s", admin.addr, addResp.AddedBy)
+	}
+
+	// List confirms entry.
+	var listResp struct {
+		Items []struct {
+			Address string `json:"address"`
+		} `json:"items"`
+		Total int `json:"total"`
+	}
+	mustDecode(t, adminClient.do("GET", "/admin/coordinators", nil), http.StatusOK, &listResp)
+	if listResp.Total != 1 {
+		t.Fatalf("list coordinators: want 1, got %d", listResp.Total)
+	}
+	if listResp.Items[0].Address != coordCandidate.addr {
+		t.Fatalf("list coordinators: unexpected address %s", listResp.Items[0].Address)
+	}
+
+	// Admin removes coordinator.
+	mustDecode(t, adminClient.do("DELETE", "/admin/coordinators/"+coordCandidate.addr, nil), http.StatusNoContent, nil)
+
+	// List is now empty.
+	mustDecode(t, adminClient.do("GET", "/admin/coordinators", nil), http.StatusOK, &listResp)
+	if listResp.Total != 0 {
+		t.Fatalf("after remove: want 0 coordinators, got %d", listResp.Total)
+	}
+
+	// Admin revokes all sessions for nonAdmin.
+	mustDecode(t, adminClient.do("DELETE", "/admin/sessions/"+nonAdmin.addr, nil), http.StatusNoContent, nil)
+
+	// Revoked token is rejected on a requireAuth endpoint.
+	resp = nonAdminClient.do("DELETE", "/auth/sessions/all", nil)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("after session revocation: want 401, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	t.Log("E2E admin flow complete")
+}
+
+// ── TestE2E_MultiCommitteeQuorum ──────────────────────────────────────────────
+
+func TestE2E_MultiCommitteeQuorum(t *testing.T) {
+	coord1 := newActor(t)
+	coord2 := newActor(t)
+	coord3 := newActor(t)
+	val := newActor(t)
+
+	srv := startServer(t)
+	c := srv.client
+
+	coord1Token := authenticate(t, c, coord1)
+	coord2Token := authenticate(t, c, coord2)
+	authenticate(t, c, coord3) // coord3 registered but won't act
+	valToken := authenticate(t, c, val)
+
+	coord1Client := c.withToken(coord1Token)
+	coord2Client := c.withToken(coord2Token)
+	valClient := c.withToken(valToken)
+
+	// 2-of-3 committee: coord1 is lead.
+	launchID := createLaunch(t, coord1Client, coord1, []map[string]any{
+		makeCommitteeMember(coord1, "coord1"),
+		makeCommitteeMember(coord2, "coord2"),
+		makeCommitteeMember(coord3, "coord3"),
+	}, 2, 3)
+
+	publishLaunch(t, launchID, signerPair{coord1Client, coord1}, signerPair{coord2Client, coord2})
+
+	// Validator joins.
+	jrID := submitJoin(t, valClient, launchID, val)
+
+	// coord1 raises APPROVE_VALIDATOR — needs 2 signatures, so stays PENDING_SIGNATURES.
+	propID := raiseProposalExpect(t, coord1Client, launchID, coord1, proposal.ActionApproveValidator,
+		proposal.ApproveValidatorPayload{
+			JoinRequestID:   uuid.MustParse(jrID),
+			OperatorAddress: val.addr,
+		},
+		"PENDING_SIGNATURES",
+	)
+
+	// coord2 signs → reaches threshold 2, executes.
+	status := signProposal(t, coord2Client, launchID, propID, coord2, proposal.DecisionSign)
+	if status != "EXECUTED" {
+		t.Fatalf("after coord2 sign: want EXECUTED, got %s", status)
+	}
+
+	// Validator now appears in the dashboard as approved.
+	var dash struct {
+		TotalApproved int `json:"total_approved"`
+	}
+	mustDecode(t, coord1Client.do("GET", "/launch/"+launchID+"/dashboard", nil), http.StatusOK, &dash)
+	if dash.TotalApproved != 1 {
+		t.Fatalf("dashboard: want 1 approved validator, got %d", dash.TotalApproved)
+	}
+
+	t.Logf("E2E multi-committee quorum complete: proposal %s executed after 2-of-3 signatures", propID)
+}
+
+// ── TestE2E_ProposalVeto ──────────────────────────────────────────────────────
+
+func TestE2E_ProposalVeto(t *testing.T) {
+	coord1 := newActor(t)
+	coord2 := newActor(t)
+	coord3 := newActor(t)
+	val := newActor(t)
+
+	srv := startServer(t)
+	c := srv.client
+
+	coord1Token := authenticate(t, c, coord1)
+	coord2Token := authenticate(t, c, coord2)
+	authenticate(t, c, coord3)
+	valToken := authenticate(t, c, val)
+
+	coord1Client := c.withToken(coord1Token)
+	coord2Client := c.withToken(coord2Token)
+	valClient := c.withToken(valToken)
+
+	// 2-of-3 committee.
+	launchID := createLaunch(t, coord1Client, coord1, []map[string]any{
+		makeCommitteeMember(coord1, "coord1"),
+		makeCommitteeMember(coord2, "coord2"),
+		makeCommitteeMember(coord3, "coord3"),
+	}, 2, 3)
+
+	publishLaunch(t, launchID, signerPair{coord1Client, coord1}, signerPair{coord2Client, coord2})
+
+	jrID := submitJoin(t, valClient, launchID, val)
+
+	// coord1 raises APPROVE_VALIDATOR → PENDING_SIGNATURES.
+	propID := raiseProposalExpect(t, coord1Client, launchID, coord1, proposal.ActionApproveValidator,
+		proposal.ApproveValidatorPayload{
+			JoinRequestID:   uuid.MustParse(jrID),
+			OperatorAddress: val.addr,
+		},
+		"PENDING_SIGNATURES",
+	)
+
+	// coord2 vetoes — any single veto kills the proposal immediately.
+	status := signProposal(t, coord2Client, launchID, propID, coord2, proposal.DecisionVeto)
+	if status != "VETOED" {
+		t.Fatalf("after coord2 veto: want VETOED, got %s", status)
+	}
+
+	// Validator's join request is still pending (not approved).
+	var jrResp struct {
+		Status string `json:"status"`
+	}
+	mustDecode(t, valClient.do("GET", "/launch/"+launchID+"/join/"+jrID, nil), http.StatusOK, &jrResp)
+	if jrResp.Status != "PENDING" {
+		t.Fatalf("after veto: join request should still be PENDING, got %s", jrResp.Status)
+	}
+
+	t.Logf("E2E proposal veto complete: proposal %s vetoed by coord2", propID)
+}
+
+// ── TestE2E_ValidatorNegativePaths ────────────────────────────────────────────
+
+func TestE2E_ValidatorNegativePaths(t *testing.T) {
+	coord := newActor(t)
+	val1 := newActor(t) // will be rejected
+	val2 := newActor(t) // will be approved then removed
+
+	srv := startServer(t)
+	c := srv.client
+
+	coordToken := authenticate(t, c, coord)
+	val1Token := authenticate(t, c, val1)
+	val2Token := authenticate(t, c, val2)
+
+	coordClient := c.withToken(coordToken)
+	val1Client := c.withToken(val1Token)
+	val2Client := c.withToken(val2Token)
+
+	launchID := createLaunch(t, coordClient, coord, []map[string]any{
+		makeCommitteeMember(coord, "coord"),
+	}, 1, 1)
+
+	publishLaunch(t, launchID, signerPair{coordClient, coord})
+
+	// val1 joins and gets rejected.
+	jr1ID := submitJoin(t, val1Client, launchID, val1)
+
+	raiseProposal(t, coordClient, launchID, coord, proposal.ActionRejectValidator,
+		proposal.RejectValidatorPayload{
+			JoinRequestID:   uuid.MustParse(jr1ID),
+			OperatorAddress: val1.addr,
+			Reason:          "failed KYC",
+		})
+
+	var jr1Resp struct {
+		Status          string `json:"status"`
+		RejectionReason string `json:"rejection_reason"`
+	}
+	mustDecode(t, val1Client.do("GET", "/launch/"+launchID+"/join/"+jr1ID, nil), http.StatusOK, &jr1Resp)
+	if jr1Resp.Status != "REJECTED" {
+		t.Fatalf("val1 join request: want REJECTED, got %s", jr1Resp.Status)
+	}
+	if jr1Resp.RejectionReason != "failed KYC" {
+		t.Fatalf("val1 rejection reason: want 'failed KYC', got %q", jr1Resp.RejectionReason)
+	}
+
+	// val2 joins and gets approved.
+	jr2ID := submitJoin(t, val2Client, launchID, val2)
+
+	raiseProposal(t, coordClient, launchID, coord, proposal.ActionApproveValidator,
+		proposal.ApproveValidatorPayload{
+			JoinRequestID:   uuid.MustParse(jr2ID),
+			OperatorAddress: val2.addr,
+		})
+
+	var dash struct {
+		TotalApproved int `json:"total_approved"`
+	}
+	mustDecode(t, coordClient.do("GET", "/launch/"+launchID+"/dashboard", nil), http.StatusOK, &dash)
+	if dash.TotalApproved != 1 {
+		t.Fatalf("after approval: want 1 approved, got %d", dash.TotalApproved)
+	}
+
+	// Coordinator removes val2 via REMOVE_APPROVED_VALIDATOR.
+	raiseProposal(t, coordClient, launchID, coord, proposal.ActionRemoveApprovedValidator,
+		proposal.RemoveApprovedValidatorPayload{
+			JoinRequestID:   uuid.MustParse(jr2ID),
+			OperatorAddress: val2.addr,
+			Reason:          "node went offline",
+		})
+
+	mustDecode(t, coordClient.do("GET", "/launch/"+launchID+"/dashboard", nil), http.StatusOK, &dash)
+	if dash.TotalApproved != 0 {
+		t.Fatalf("after removal: want 0 approved, got %d", dash.TotalApproved)
+	}
+
+	t.Log("E2E validator negative paths complete: reject + remove flows verified")
+}
+
+// ── TestE2E_PrivateLaunch ─────────────────────────────────────────────────────
+
+func TestE2E_PrivateLaunch(t *testing.T) {
+	coord := newActor(t)
+	outsider := newActor(t)
+	invited := newActor(t)
+
+	srv := startServer(t)
+	c := srv.client
+
+	coordToken := authenticate(t, c, coord)
+	outsiderToken := authenticate(t, c, outsider)
+	invitedToken := authenticate(t, c, invited)
+
+	coordClient := c.withToken(coordToken)
+	outsiderClient := c.withToken(outsiderToken)
+	invitedClient := c.withToken(invitedToken)
+
+	// Create ALLOWLIST launch.
+	gentxDeadline := time.Now().Add(48 * time.Hour).UTC().Format(time.RFC3339)
+	windowOpen := time.Now().UTC().Format(time.RFC3339)
+	launchBody := map[string]any{
+		"record": map[string]any{
+			"chain_id":                   "private-1",
+			"chain_name":                 "Private Chain",
+			"bech32_prefix":              "cosmos",
+			"binary_name":                "privatechaind",
+			"binary_version":             "v1.0.0",
+			"binary_sha256":              "abc123",
+			"denom":                      "upriv",
+			"min_self_delegation":        "1000000",
+			"max_commission_rate":        "0.20",
+			"max_commission_change_rate": "0.01",
+			"gentx_deadline":             gentxDeadline,
+			"application_window_open":    windowOpen,
+			"min_validator_count":        1,
+		},
+		"launch_type": "TESTNET",
+		"visibility":  "ALLOWLIST",
+		"committee": map[string]any{
+			"members":            []map[string]any{makeCommitteeMember(coord, "coord")},
+			"threshold_m":        1,
+			"total_n":            1,
+			"lead_address":       coord.addr,
+			"creation_signature": base64.StdEncoding.EncodeToString(make([]byte, 64)),
+		},
+	}
+
+	var launchResp struct {
+		ID string `json:"id"`
+	}
+	mustDecode(t, coordClient.do("POST", "/launch", launchBody), http.StatusCreated, &launchResp)
+	launchID := launchResp.ID
+
+	// Outsider gets 404 — ALLOWLIST launches are invisible to non-members.
+	resp := outsiderClient.do("GET", "/launch/"+launchID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("outsider GET private launch: want 404, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Unauthenticated also gets 404.
+	resp = c.do("GET", "/launch/"+launchID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("unauthenticated GET private launch: want 404, got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	// Coordinator adds invited to the allowlist via PATCH.
+	mustDecode(t, coordClient.do("PATCH", "/launch/"+launchID, map[string]any{
+		"allowlist": []string{invited.addr},
+	}), http.StatusOK, nil)
+
+	// Invited can now access the launch.
+	var launchGet struct {
+		ID         string `json:"id"`
+		Visibility string `json:"visibility"`
+	}
+	mustDecode(t, invitedClient.do("GET", "/launch/"+launchID, nil), http.StatusOK, &launchGet)
+	if launchGet.ID != launchID {
+		t.Fatalf("invited GET private launch: unexpected ID %s", launchGet.ID)
+	}
+
+	// Outsider still cannot access.
+	resp = outsiderClient.do("GET", "/launch/"+launchID, nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("outsider still gets 404 after invited added: got %d", resp.StatusCode)
+	}
+	resp.Body.Close()
+
+	t.Logf("E2E private launch complete: allowlist visibility enforced for launch %s", launchID)
+}
+
+// ── TestE2E_LaunchCancellation ────────────────────────────────────────────────
+
+func TestE2E_LaunchCancellation(t *testing.T) {
+	coord := newActor(t)
+	val := newActor(t)
+	lateVal := newActor(t)
+
+	srv := startServer(t)
+	c := srv.client
+
+	coordToken := authenticate(t, c, coord)
+	valToken := authenticate(t, c, val)
+	lateValToken := authenticate(t, c, lateVal)
+
+	coordClient := c.withToken(coordToken)
+	valClient := c.withToken(valToken)
+	lateValClient := c.withToken(lateValToken)
+
+	launchID := createLaunch(t, coordClient, coord, []map[string]any{
+		makeCommitteeMember(coord, "coord"),
+	}, 1, 1)
+
+	publishLaunch(t, launchID, signerPair{coordClient, coord})
+
+	// Validator joins while window is open.
+	submitJoin(t, valClient, launchID, val)
+
+	// Lead coordinator cancels.
+	var cancelResp struct {
+		Status string `json:"status"`
+	}
+	mustDecode(t, coordClient.do("POST", "/launch/"+launchID+"/cancel", nil), http.StatusOK, &cancelResp)
+	if cancelResp.Status != "CANCELED" {
+		t.Fatalf("cancel: want CANCELED, got %s", cancelResp.Status)
+	}
+
+	// A late validator attempting to join gets an error (launch is not in a joinable state).
+	gentx := json.RawMessage(`{"body":{"messages":[{"@type":"/cosmos.staking.v1beta1.MsgCreateValidator"}]}}`)
+	joinInput := services.SubmitInput{
+		ChainID:         "testchain-1",
+		OperatorAddress: lateVal.addr,
+		PubKeyB64:       lateVal.pubB64,
+		ConsensusPubKey: lateVal.pubB64,
+		GentxJSON:       gentx,
+		PeerAddress:     "abcdef1234567890abcdef1234567890abcdef12@192.168.1.9:26656",
+		RPCEndpoint:     "https://192.168.1.9:26657",
+		Nonce:           newNonce(),
+		Timestamp:       nowTS(),
+	}
+	joinInput.Signature = lateVal.sign(joinInput)
+
+	resp := lateValClient.do("POST", "/launch/"+launchID+"/join", joinInput)
+	if resp.StatusCode == http.StatusCreated {
+		t.Fatalf("late join after cancellation: want error, got 201")
+	}
+	resp.Body.Close()
+
+	// Non-lead coordinator cannot cancel (if there were one — here we verify the
+	// lead check by ensuring the lead successfully canceled and the state is terminal).
+	resp = coordClient.do("POST", "/launch/"+launchID+"/cancel", nil)
+	if resp.StatusCode == http.StatusOK {
+		t.Fatalf("double cancel: expected error on already-canceled launch, got 200")
+	}
+	resp.Body.Close()
+
+	t.Logf("E2E launch cancellation complete: launch %s canceled, post-cancel actions rejected", launchID)
+}

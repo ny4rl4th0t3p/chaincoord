@@ -84,6 +84,10 @@ func (s *JWTSessionStore) Validate(ctx context.Context, raw string) (string, err
 		if err != nil {
 			return "", fmt.Errorf("jwt store: parse revoke_before: %w", err)
 		}
+		// Reject any token whose issuedAt is at or before the fence.
+		// Both timestamps are second-precision, so "equal" means the token
+		// was issued in the same second as the revocation call — treat it as
+		// revoked rather than risk accepting a pre-revocation token.
 		if !issuedAt.After(revokeBefore) {
 			return "", ports.ErrUnauthorized
 		}

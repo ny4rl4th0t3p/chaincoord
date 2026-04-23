@@ -105,14 +105,14 @@ func (s *Server) handleAuthRevoke(w http.ResponseWriter, r *http.Request) {
 
 // GET /auth/session
 // Requires: Authorization: Bearer <token>
-// Response: { "operator_address": "...", "expires_at": "..." }
+// Response: { "operator_address": "...", "expires_at": "...", "is_coordinator": true/false }
 //
 // @Summary      Get current session info
-// @Description  Returns the operator address and expiry of the supplied session token.
+// @Description  Returns the operator address, expiry, and coordinator status of the supplied session token.
 // @Tags         auth
 // @Security     BearerAuth
 // @Produce      json
-// @Success      200  {object}  map[string]string
+// @Success      200  {object}  map[string]any
 // @Failure      401  {object}  errorEnvelope
 // @Router       /auth/session [get]
 func (s *Server) handleAuthSessionInfo(w http.ResponseWriter, r *http.Request) {
@@ -128,9 +128,12 @@ func (s *Server) handleAuthSessionInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]string{
+	isCoordinator, _ := s.coordinatorAllowlist.Contains(r.Context(), info.OperatorAddress)
+
+	writeJSON(w, http.StatusOK, map[string]any{
 		"operator_address": info.OperatorAddress,
 		"expires_at":       info.ExpiresAt.UTC().Format("2006-01-02T15:04:05Z"),
+		"is_coordinator":   isCoordinator,
 	})
 }
 

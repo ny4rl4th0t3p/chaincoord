@@ -18,6 +18,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/ny4rl4th0t3p/chaincoord/internal/application/ports"
+	"github.com/ny4rl4th0t3p/chaincoord/internal/application/ratelimit"
 	"github.com/ny4rl4th0t3p/chaincoord/internal/application/services"
 	"github.com/ny4rl4th0t3p/chaincoord/internal/config"
 	"github.com/ny4rl4th0t3p/chaincoord/internal/infrastructure/api"
@@ -47,6 +49,7 @@ func newServeCmd() *cobra.Command {
 	cmd.Flags().String("tls-cert", "", "path to TLS certificate file (PEM); requires --tls-key")
 	cmd.Flags().String("tls-key", "", "path to TLS private key file (PEM); requires --tls-cert")
 	cmd.Flags().Bool("insecure-no-tls", false, "suppress the TLS warning when TLS is terminated upstream (infra TLS mode)")
+	cmd.Flags().Bool("insecure-no-rate-limit", false, "disable per-IP rate limit on /auth/challenge (automated test use only)")
 	cmd.Flags().Bool("genesis-host-mode", false,
 		"accept raw genesis file uploads and serve them from disk (Option C); default is attestor-only mode")
 	cmd.Flags().Int64("genesis-max-bytes", 0, "maximum raw genesis upload size in bytes when host mode is on (default 700 MiB)")
@@ -96,6 +99,7 @@ func loadServeConfig(cmd *cobra.Command) (*config.Config, error) {
 		{"tls-cert", "tls_cert"},
 		{"tls-key", "tls_key"},
 		{"insecure-no-tls", "insecure_no_tls"},
+		{"insecure-no-rate-limit", "insecure_no_rate_limit"},
 		{"genesis-host-mode", "genesis_host_mode"},
 		{"genesis-max-bytes", "genesis_max_bytes"},
 	} {
@@ -152,11 +156,23 @@ func serveAndWait(httpServer *http.Server, cfg *config.Config, logger zerolog.Lo
 	return nil
 }
 
+func monitorURLValidatorFor(insecureNoSSRFCheck bool) func(string) error {
+	if insecureNoSSRFCheck {
+		return netutil.ValidateRPCURLFormat
+	}
+	return netutil.ValidateRPCURL
+}
+
 func runServe(cmd *cobra.Command, _ []string) error {
 	// --- Config ----------------------------------------------------------
 	cfg, err := loadServeConfig(cmd)
 	if err != nil {
 		return err
+	}
+	// Viper bool env-var unmarshalling can silently miss the env in some
+	// configurations; read it directly as a hard override.
+	if os.Getenv("COORD_INSECURE_NO_RATE_LIMIT") == "true" {
+		cfg.InsecureNoRateLimit = true
 	}
 
 	// --- Logger ----------------------------------------------------------
@@ -178,7 +194,13 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("initializing JWT session store: %w", err)
 	}
-	challengeStore := sqlite.NewChallengeStore(db)
+	var challengeStore ports.ChallengeStore = sqlite.NewChallengeStore(db)
+	if !cfg.InsecureNoRateLimit {
+		challengeStore = ratelimit.NewRateLimitedChallengeStore(
+			challengeStore,
+			sqlite.NewChallengeRateLimiterStore(db),
+		)
+	}
 	nonceStore := sqlite.NewNonceStore(db)
 	coordinatorAllowlistRepo := sqlite.NewCoordinatorAllowlistRepo(db)
 
@@ -229,6 +251,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 		cfg.LaunchPolicy,
 		cfg.GenesisHostMode,
 		cfg.GenesisMaxBytes,
+		cfg.InsecureNoRateLimit,
 	)
 	httpServer := &http.Server{
 		Addr:              cfg.ListenAddr,
@@ -240,11 +263,7 @@ func runServe(cmd *cobra.Command, _ []string) error {
 	jobCtx, stopJobs := context.WithCancel(context.Background())
 	defer stopJobs()
 	go jobs.RunProposalExpiry(jobCtx, proposalSvc, logger, time.Minute)
-	monitorURLValidator := netutil.ValidateRPCURL
-	if cfg.InsecureNoSSRFCheck {
-		monitorURLValidator = netutil.ValidateRPCURLFormat
-	}
-	go jobs.RunLaunchMonitor(jobCtx, launchRepo, sseBroker, logger, time.Minute, monitorURLValidator)
+	go jobs.RunLaunchMonitor(jobCtx, launchRepo, sseBroker, logger, time.Minute, monitorURLValidatorFor(cfg.InsecureNoSSRFCheck))
 
 	// --- Start + graceful shutdown ---------------------------------------
 	return serveAndWait(httpServer, cfg, logger, stopJobs)

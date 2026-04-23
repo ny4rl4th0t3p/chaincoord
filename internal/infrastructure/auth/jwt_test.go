@@ -110,11 +110,14 @@ func TestJWTSessionStore_RevokeAllForOperator(t *testing.T) {
 
 	token, _ := store.Issue(ctx, "cosmos1revoke")
 
+	// Sleep 1 second so revoke_before is strictly after issuedAt.
+	time.Sleep(time.Second)
+
 	if err := store.RevokeAllForOperator(ctx, "cosmos1revoke"); err != nil {
 		t.Fatalf("RevokeAllForOperator: %v", err)
 	}
 
-	// Token issued before the fence must be rejected.
+	// Token issued strictly before the fence must be rejected.
 	_, err := store.Validate(ctx, token)
 	if !errors.Is(err, ports.ErrUnauthorized) {
 		t.Errorf("expected ErrUnauthorized after revocation, got %v", err)
@@ -125,12 +128,13 @@ func TestJWTSessionStore_RevokeAllForOperator_NewTokenAllowed(t *testing.T) {
 	store := newStore(t)
 	ctx := context.Background()
 
-	// Revoke, then issue a new token — the new token must pass.
 	if err := store.RevokeAllForOperator(ctx, "cosmos1reissue"); err != nil {
 		t.Fatalf("RevokeAllForOperator: %v", err)
 	}
 
-	// Sleep 1 second so iat > revoke_before (both are truncated to second precision).
+	// Wait one second so the new token's issuedAt is strictly after the fence.
+	// JWT NumericDate is second-precision, so the token must be issued in a
+	// different second than the fence to pass the revocation check.
 	time.Sleep(time.Second)
 
 	token, _ := store.Issue(ctx, "cosmos1reissue")
