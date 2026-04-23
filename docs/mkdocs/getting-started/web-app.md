@@ -4,6 +4,12 @@ The `web/app/` directory is a React + TypeScript frontend that lets coordinators
 
 For setup and infrastructure, see [Dev Environment](dev-environment.md).
 
+!!! danger "Proof of concept — not for production use"
+    chaincoord is research-grade software. APIs, data formats, and behaviours may change without notice. **Do not use it for mainnet launches or any environment where correctness and availability are required.**
+
+!!! warning "Web UI not fully validated"
+    The frontend has not been fully validated end-to-end. Visual and interaction regressions may exist even when the full test suite passes.
+
 ---
 
 ## Sign-in paths
