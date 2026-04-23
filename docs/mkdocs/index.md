@@ -51,15 +51,17 @@ All state transitions are driven by **proposals** — committee actions that req
 
 ## Components
 
-| Binary | Role |
+| Component | Role |
 |---|---|
 | `coordd` | The coordination server — HTTP API + background jobs |
+| `web/app` | React + TypeScript web frontend — coordinators and validators use their Keplr/Leap wallet to authenticate and interact with the full launch lifecycle |
 | `smoke-signer` | Test utility for signing committee and validator actions in smoke/E2E tests |
 
 ---
 
 ## Next steps
 
+- [Web App](getting-started/web-app.md) — run the full stack with `make dev-up` and use it from a browser wallet
 - [Quickstart](getting-started/quickstart.md) — run `coordd` locally in five minutes
 - [Setup & Configuration](reference/setup.md) — full configuration reference
 - [Concepts](concepts/overview.md) — deeper explanation of roles, proposals, and the lifecycle

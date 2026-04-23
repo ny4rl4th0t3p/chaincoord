@@ -262,12 +262,12 @@ definitions:
       committee:
         $ref: '#/definitions/internal_infrastructure_api.committeeRequestJSON'
       launch_type:
-        example: mainnet
+        example: MAINNET
         type: string
       record:
         $ref: '#/definitions/internal_infrastructure_api.chainRecordJSON'
       visibility:
-        example: public
+        example: PUBLIC
         type: string
     type: object
   internal_infrastructure_api.errorBody:
@@ -583,7 +583,7 @@ paths:
       consumes:
       - application/json
       description: Issues a short-lived challenge for the given operator address.
-        Rate-limited to 10 req/IP/min.
+        Rate-limited to 10 req/IP/min and 5 req/operator/5min.
       parameters:
       - description: Operator address
         in: body
@@ -626,16 +626,15 @@ paths:
       tags:
       - auth
     get:
-      description: Returns the operator address and expiry of the supplied session
-        token.
+      description: Returns the operator address, expiry, and coordinator status of
+        the supplied session token.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
+            additionalProperties: true
             type: object
         "401":
           description: Unauthorized

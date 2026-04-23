@@ -41,14 +41,32 @@ before it executes. A tamper-evident audit log records every action and can be v
 
 ## Components
 
-| Binary | Role |
+| Component | Role |
 |---|---|
 | `coordd` | Coordination server — HTTP API + background block monitor |
+| `web/app` | React + TypeScript web frontend — coordinators and validators use their Keplr/Leap wallet to authenticate and interact with the full launch lifecycle |
 | `smoke-signer` | Test utility for signing committee and validator actions in E2E / smoke tests |
 
 ---
 
 ## Quick start
+
+### Browser (Docker)
+
+Requires Docker with Compose v2, `make`, and a Keplr or Leap wallet extension in your browser.
+
+```bash
+git clone https://github.com/ny4rl4th0t3p/chaincoord.git
+cd chaincoord
+cp .env.example .env          # set COORD_ADMIN_ADDRESSES to your wallet address
+make dev-up
+```
+
+Open **http://localhost:3000**. Keys are generated automatically on first boot.
+
+Setting `COORD_ADMIN_ADDRESSES` is optional but required to access the admin panel. Use the address you will sign in with (Cosmos Hub, Osmosis, or Juno).
+
+### API only (local Go build)
 
 ```bash
 # Build
@@ -88,13 +106,14 @@ curl http://localhost:8080/healthz
 
 Full documentation is available at **https://ny4rl4th0t3p.github.io/chaincoord/**
 
+- [Dev Environment](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/dev-environment/) — full-stack setup, admin config, local dev
+- [Web App](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/web-app/) — sign-in paths, coordinator and validator flows, admin panel
 - [Concepts overview](https://ny4rl4th0t3p.github.io/chaincoord/concepts/overview/) — roles, proposals, and the audit log
 - [Launch lifecycle](https://ny4rl4th0t3p.github.io/chaincoord/concepts/lifecycle/) — all seven states in detail
 - [Roles](https://ny4rl4th0t3p.github.io/chaincoord/concepts/roles/) — lead coordinator, coordinator, validator
 - [Proposals & M-of-N](https://ny4rl4th0t3p.github.io/chaincoord/concepts/proposals/) — all action types and signing rules
 - [Setup & Configuration](https://ny4rl4th0t3p.github.io/chaincoord/reference/setup/) — full config reference, TLS, CORS, production options
 - [Quickstart](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/quickstart/) — step-by-step local setup
-- [Docker](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/docker/) — containerised deployment
 - [Smoke test](https://ny4rl4th0t3p.github.io/chaincoord/getting-started/smoke-test/) — end-to-end protocol against a live chain
 - [API reference](https://ny4rl4th0t3p.github.io/chaincoord/reference/api/) — HTTP endpoints
 - [Audit CLI](https://ny4rl4th0t3p.github.io/chaincoord/reference/audit/) — offline log verification
