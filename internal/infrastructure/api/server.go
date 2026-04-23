@@ -29,7 +29,7 @@ type Server struct {
 	launchPolicy         string              // "open" or "restricted"
 	genesisHostMode      bool                // true → accept raw file uploads (Option C)
 	genesisMaxBytes      int64               // max raw upload size when host mode is on
-	disableRateLimit     bool                // true → skip all per-IP rate limiters (test only)
+	disableRateLimit     bool                // true → skip HTTP per-IP rate limiters (test only; storage-layer limiter is disabled at wire-up)
 	auth                 *services.AuthService
 	launches             *services.LaunchService
 	joinReqs             *services.JoinRequestService
@@ -55,7 +55,8 @@ type sseSubscriber interface {
 // adminAddresses is the list of operator addresses permitted to call admin-only endpoints.
 // genesisHostMode enables Option C (raw file upload/serve); when false only attestor mode is accepted.
 // genesisMaxBytes is the maximum raw genesis upload size (only relevant when genesisHostMode is true).
-// disableRateLimit bypasses all per-IP rate limiters; only for automated test environments.
+// disableRateLimit bypasses the HTTP per-IP rate limiters; only for automated test environments.
+// The storage-layer per-operator rate limiter is disabled separately at wire-up time (serve.go).
 func NewServer(
 	log zerolog.Logger,
 	corsOriginsCSV string,

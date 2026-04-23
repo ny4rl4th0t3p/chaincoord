@@ -90,7 +90,7 @@ func (s *JoinRequestService) Submit(ctx context.Context, launchID uuid.UUID, inp
 	}
 
 	if err := l.CanValidatorApply(operatorAddr); err != nil {
-		return nil, fmt.Errorf("submit join request: %w", err)
+		return nil, fmt.Errorf("submit join request: %w: %w", err, ports.ErrForbidden)
 	}
 
 	// Rate limit: max 3 submissions per operator per launch.
@@ -114,15 +114,17 @@ func (s *JoinRequestService) Submit(ctx context.Context, launchID uuid.UUID, inp
 
 	peerAddr, err := launch.NewPeerAddress(input.PeerAddress)
 	if err != nil {
-		return nil, fmt.Errorf("submit join request: peer_address: %w", err)
+		return nil, fmt.Errorf("submit join request: peer_address: %w: %w", err, ports.ErrBadRequest)
 	}
-	rpcEndpoint, err := launch.NewRPCEndpoint(input.RPCEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("submit join request: rpc_endpoint: %w", err)
+	var rpcEndpoint launch.RPCEndpoint
+	if input.RPCEndpoint != "" {
+		if rpcEndpoint, err = launch.NewRPCEndpoint(input.RPCEndpoint); err != nil {
+			return nil, fmt.Errorf("submit join request: rpc_endpoint: %w: %w", err, ports.ErrBadRequest)
+		}
 	}
 	sig, err := launch.NewSignature(input.Signature)
 	if err != nil {
-		return nil, fmt.Errorf("submit join request: signature value: %w", err)
+		return nil, fmt.Errorf("submit join request: signature value: %w: %w", err, ports.ErrBadRequest)
 	}
 
 	jr, err := joinrequest.New(
@@ -140,7 +142,7 @@ func (s *JoinRequestService) Submit(ctx context.Context, launchID uuid.UUID, inp
 		time.Now(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("submit join request: validation: %w", err)
+		return nil, fmt.Errorf("submit join request: validation: %w: %w", err, ports.ErrBadRequest)
 	}
 
 	if err := s.joinRequests.Save(ctx, jr); err != nil {

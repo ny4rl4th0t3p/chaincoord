@@ -117,6 +117,9 @@ type RPCEndpoint struct {
 }
 
 func NewRPCEndpoint(s string) (RPCEndpoint, error) {
+	if s == "" {
+		return RPCEndpoint{}, fmt.Errorf("rpc endpoint: empty")
+	}
 	u, err := url.ParseRequestURI(s)
 	if err != nil {
 		return RPCEndpoint{}, fmt.Errorf("rpc endpoint: invalid URL %q: %w", s, err)

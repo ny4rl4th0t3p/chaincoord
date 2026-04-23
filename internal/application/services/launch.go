@@ -77,6 +77,13 @@ func (s *LaunchService) CreateLaunch(ctx context.Context, input CreateLaunchInpu
 	if err := s.launches.Save(ctx, l); err != nil {
 		return nil, fmt.Errorf("create launch: save: %w", err)
 	}
+	_ = s.writeAudit(ctx, l.ID.String(), domain.LaunchCreated{
+		LaunchID:    l.ID,
+		ChainID:     l.Record.ChainID,
+		LaunchType:  string(l.LaunchType),
+		Visibility:  string(l.Visibility),
+		LeadAddress: l.Committee.LeadAddress.String(),
+	})
 	return l, nil
 }
 
@@ -107,7 +114,7 @@ func (s *LaunchService) UploadInitialGenesis(ctx context.Context, launchID uuid.
 	if err := s.launches.Save(ctx, l); err != nil {
 		return "", fmt.Errorf("upload genesis: save launch: %w", err)
 	}
-
+	_ = s.writeAudit(ctx, launchID.String(), domain.InitialGenesisUploaded{LaunchID: launchID, GenesisHash: hash})
 	return hash, nil
 }
 
@@ -151,7 +158,7 @@ func (s *LaunchService) UploadFinalGenesis(ctx context.Context, launchID uuid.UU
 	if err := s.launches.Save(ctx, l); err != nil {
 		return "", fmt.Errorf("upload final genesis: save launch: %w", err)
 	}
-
+	_ = s.writeAudit(ctx, launchID.String(), domain.FinalGenesisUploaded{LaunchID: launchID, GenesisHash: hash})
 	return hash, nil
 }
 
@@ -162,10 +169,14 @@ func (s *LaunchService) UploadFinalGenesis(ctx context.Context, launchID uuid.UU
 // Structural validation (chain_id, JSON format) is skipped because the file
 // bytes are not available; the hash is the integrity guarantee.
 func (s *LaunchService) UploadInitialGenesisRef(ctx context.Context, launchID uuid.UUID, genesisURL, sha256Hash string) error {
-	return s.uploadGenesisRef(ctx, "upload initial genesis ref", launch.StatusDraft, launchID, genesisURL, sha256Hash,
+	if err := s.uploadGenesisRef(ctx, "upload initial genesis ref", launch.StatusDraft, launchID, genesisURL, sha256Hash,
 		s.genesis.SaveInitialRef,
 		func(l *launch.Launch, hash string) { l.InitialGenesisSHA256 = hash },
-	)
+	); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, launchID.String(), domain.InitialGenesisUploaded{LaunchID: launchID, GenesisHash: sha256Hash})
+	return nil
 }
 
 // UploadFinalGenesisRef registers an external URL as the source of the final
@@ -185,13 +196,17 @@ func (s *LaunchService) UploadFinalGenesisRef(
 		return fmt.Errorf("upload final genesis ref: genesis_time %s is not in the future: %w",
 			genesisTime.Format(time.RFC3339), ports.ErrBadRequest)
 	}
-	return s.uploadGenesisRef(ctx, "upload final genesis ref", launch.StatusWindowClosed, launchID, genesisURL, sha256Hash,
+	if err := s.uploadGenesisRef(ctx, "upload final genesis ref", launch.StatusWindowClosed, launchID, genesisURL, sha256Hash,
 		s.genesis.SaveFinalRef,
 		func(l *launch.Launch, hash string) {
 			l.FinalGenesisSHA256 = hash
 			l.Record.GenesisTime = &genesisTime
 		},
-	)
+	); err != nil {
+		return err
+	}
+	_ = s.writeAudit(ctx, launchID.String(), domain.FinalGenesisUploaded{LaunchID: launchID, GenesisHash: sha256Hash})
+	return nil
 }
 
 func (s *LaunchService) uploadGenesisRef(
@@ -512,8 +527,12 @@ func (s *LaunchService) ListLaunches(ctx context.Context, callerAddr string, pag
 	return s.launches.FindAll(ctx, callerAddr, page, perPage)
 }
 
-// OpenWindow transitions a PUBLISHED launch to WINDOW_OPEN.
-// Only a committee member may call this. It is exposed via POST /launch/:id/open-window.
+// OpenWindow transitions a launch to WINDOW_OPEN.
+// Accepts PUBLISHED status directly. If the launch is still in DRAFT and the initial
+// genesis hash has already been uploaded, it auto-publishes first (single-coordinator
+// shortcut — equivalent to raising and immediately executing a PUBLISH_CHAIN_RECORD
+// proposal). Any other status returns ErrBadRequest.
+// Only a committee member may call this.
 func (s *LaunchService) OpenWindow(ctx context.Context, launchID uuid.UUID, callerAddr string) error {
 	l, err := s.launches.FindByID(ctx, launchID)
 	if err != nil {
@@ -523,10 +542,24 @@ func (s *LaunchService) OpenWindow(ctx context.Context, launchID uuid.UUID, call
 	if err != nil || !l.Committee.HasMember(callerOp) {
 		return fmt.Errorf("open window: caller is not a committee member: %w", ports.ErrForbidden)
 	}
+
+	if l.Status == launch.StatusDraft {
+		if l.InitialGenesisSHA256 == "" {
+			return fmt.Errorf("open window: initial genesis must be uploaded before opening the application window: %w", ports.ErrBadRequest)
+		}
+		if err := l.Publish(l.InitialGenesisSHA256); err != nil {
+			return fmt.Errorf("open window: auto-publish: %w: %w", err, ports.ErrBadRequest)
+		}
+	}
+
 	if err := l.OpenWindow(); err != nil {
+		return fmt.Errorf("%w: %w", err, ports.ErrBadRequest)
+	}
+	if err := s.launches.Save(ctx, l); err != nil {
 		return err
 	}
-	return s.launches.Save(ctx, l)
+	_ = s.writeAudit(ctx, l.ID.String(), domain.WindowOpened{LaunchID: l.ID})
+	return nil
 }
 
 // GetDashboard returns the readiness dashboard state for a launch.
@@ -607,8 +640,23 @@ func (s *LaunchService) CancelLaunch(ctx context.Context, launchID uuid.UUID, ca
 	if err := s.launches.Save(ctx, l); err != nil {
 		return fmt.Errorf("cancel launch: save: %w", err)
 	}
-	s.events.Publish(domain.LaunchCancelled{LaunchID: l.ID})
+	ev := domain.LaunchCancelled{LaunchID: l.ID}
+	s.events.Publish(ev)
+	_ = s.writeAudit(ctx, l.ID.String(), ev)
 	return nil
+}
+
+func (s *LaunchService) writeAudit(ctx context.Context, launchID string, ev domain.DomainEvent) error {
+	payload, err := json.Marshal(ev)
+	if err != nil {
+		return err
+	}
+	return s.audit.Append(ctx, ports.AuditEvent{
+		LaunchID:   launchID,
+		EventName:  ev.EventName(),
+		OccurredAt: ev.OccurredAt(),
+		Payload:    payload,
+	})
 }
 
 func sha256Hex(data []byte) string {

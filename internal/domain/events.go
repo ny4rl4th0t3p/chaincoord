@@ -154,6 +154,48 @@ func (e GenesisRevisionApproved) WithTime(t time.Time) GenesisRevisionApproved {
 	return e
 }
 
+// LaunchCreated is emitted when a new launch is created in DRAFT status.
+type LaunchCreated struct {
+	base
+	LaunchID    uuid.UUID
+	ChainID     string
+	LaunchType  string
+	Visibility  string
+	LeadAddress string
+}
+
+func (LaunchCreated) EventName() string        { return "LaunchCreated" }
+func (e LaunchCreated) GetLaunchID() uuid.UUID { return e.LaunchID }
+
+// WindowOpened is emitted when the application window is opened on a PUBLISHED launch.
+type WindowOpened struct {
+	base
+	LaunchID uuid.UUID
+}
+
+func (WindowOpened) EventName() string        { return "WindowOpened" }
+func (e WindowOpened) GetLaunchID() uuid.UUID { return e.LaunchID }
+
+// InitialGenesisUploaded is emitted when the initial (pre-gentx) genesis file is stored.
+type InitialGenesisUploaded struct {
+	base
+	LaunchID    uuid.UUID
+	GenesisHash string
+}
+
+func (InitialGenesisUploaded) EventName() string        { return "InitialGenesisUploaded" }
+func (e InitialGenesisUploaded) GetLaunchID() uuid.UUID { return e.LaunchID }
+
+// FinalGenesisUploaded is emitted when the coordinator-assembled final genesis file is stored.
+type FinalGenesisUploaded struct {
+	base
+	LaunchID    uuid.UUID
+	GenesisHash string
+}
+
+func (FinalGenesisUploaded) EventName() string        { return "FinalGenesisUploaded" }
+func (e FinalGenesisUploaded) GetLaunchID() uuid.UUID { return e.LaunchID }
+
 // LaunchDetected is emitted by the block monitoring goroutine when block 1 is seen.
 type LaunchDetected struct {
 	base

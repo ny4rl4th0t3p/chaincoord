@@ -200,9 +200,11 @@ func scanJoinRequest(scan func(dest ...any) error) (*joinrequest.JoinRequest, er
 	if err != nil {
 		return nil, fmt.Errorf("scan peer address: %w", err)
 	}
-	rpc, err := launch.NewRPCEndpoint(rpcEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("scan rpc endpoint: %w", err)
+	var rpc launch.RPCEndpoint
+	if rpcEndpoint != "" {
+		if rpc, err = launch.NewRPCEndpoint(rpcEndpoint); err != nil {
+			return nil, fmt.Errorf("scan rpc endpoint: %w", err)
+		}
 	}
 	sa, err := strToTime(submittedAt)
 	if err != nil {
