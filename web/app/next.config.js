@@ -27,6 +27,16 @@ module.exports = {
     };
   },
   webpack: (config) => {
+    // Prevent Watchpack from watching ancestor directories (avoids ENOSPC in dev).
+    // RegExp matches any path that does NOT start with this project root,
+    // so only files inside web/app/ are ever watched.
+    const projectRoot = path.resolve(__dirname);
+    const escaped = projectRoot.replace(/[/\\^$*+?.()|[\]{}]/g, '\\$&');
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: new RegExp(`^(?!${escaped}(?:/|$))`),
+    };
+
     config.module.rules.push({
       test: /\.yaml$/,
       use: 'yaml-loader',

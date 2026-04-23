@@ -48,7 +48,8 @@ test('K.4.1val submit join request shows pending status', async ({ browser }) =>
 
 // ── K.5 Full coordinator + validator flow (multi-actor) ────────────────────────
 
-test('K.5 full launch flow: create → open → join → approve', { timeout: 90_000 }, async ({ browser }) => {
+test('K.5 full launch flow: create → open → join → approve', async ({ browser }) => {
+  test.setTimeout(90_000);
   const CHAIN_PREFIX = 'k5';
 
   // ── Step 1: coordinator creates and opens launch ────────────────────────────
