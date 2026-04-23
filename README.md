@@ -3,6 +3,8 @@
 > **Training project for an SDD (Spec Driven Development) exercise.** This codebase was built to explore
 > the design space of decentralised genesis coordination. The heavy lifting was done by a supervised AI
 > agent. It is research-grade — not for production use.
+>
+> **Warning:** The web UI has not been fully validated end-to-end. Visual and interaction regressions may exist even when the full test suite passes.
 
 Self-hosted coordination system for **Cosmos SDK** chain launches.
 
@@ -128,3 +130,4 @@ Full documentation is available at **https://ny4rl4th0t3p.github.io/chaincoord/*
 - Does not assemble the final genesis file — that step is done locally by the coordinator using the chain's node binary (e.g. `gaiad genesis collect-gentxs`, `evmosd genesis collect-gentxs`, etc.)
 - SQLite-backed by default; not designed for high availability
 - Storage and RPC layers are interface-backed — adding PostgreSQL, MySQL, or a different chain RPC adapter requires only implementing the relevant interface and wiring it at startup
+- The web UI has not been fully validated end-to-end; visual and interaction regressions may exist even when the full test suite passes
