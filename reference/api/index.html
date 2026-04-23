@@ -167,11 +167,23 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="../../getting-started/docker/">
+<a class="md-nav__link" href="../../getting-started/dev-environment/">
 <span class="md-ellipsis">
     
   
-    Docker
+    Dev Environment
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../getting-started/web-app/">
+<span class="md-ellipsis">
+    
+  
+    Web App
   
 
     
@@ -377,6 +389,15 @@
     </span>
 </a>
 </li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#delete-authsessionsall">
+<span class="md-ellipsis">
+      
+        DELETE /auth/sessions/all
+      
+    </span>
+</a>
+</li>
 </ul>
 </nav>
 </li>
@@ -400,10 +421,10 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#get-launch">
+<a class="md-nav__link" href="#get-launches">
 <span class="md-ellipsis">
       
-        GET /launch
+        GET /launches
       
     </span>
 </a>
@@ -431,6 +452,15 @@
 <span class="md-ellipsis">
       
         PATCH /launch/{id}
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#post-launchidcancel">
+<span class="md-ellipsis">
+      
+        POST /launch/{id}/cancel
       
     </span>
 </a>
@@ -467,6 +497,24 @@
 <span class="md-ellipsis">
       
         GET /launch/{id}/genesis/hash
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#post-launchidcommittee">
+<span class="md-ellipsis">
+      
+        POST /launch/{id}/committee
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#get-launchiddashboard">
+<span class="md-ellipsis">
+      
+        GET /launch/{id}/dashboard
       
     </span>
 </a>
@@ -596,6 +644,15 @@
 <span class="md-ellipsis">
       
         POST /launch/{id}/ready
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#get-launchidaudit">
+<span class="md-ellipsis">
+      
+        GET /launch/{id}/audit
       
     </span>
 </a>
@@ -817,6 +874,15 @@
     </span>
 </a>
 </li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#delete-authsessionsall">
+<span class="md-ellipsis">
+      
+        DELETE /auth/sessions/all
+      
+    </span>
+</a>
+</li>
 </ul>
 </nav>
 </li>
@@ -840,10 +906,10 @@
 </a>
 </li>
 <li class="md-nav__item">
-<a class="md-nav__link" href="#get-launch">
+<a class="md-nav__link" href="#get-launches">
 <span class="md-ellipsis">
       
-        GET /launch
+        GET /launches
       
     </span>
 </a>
@@ -871,6 +937,15 @@
 <span class="md-ellipsis">
       
         PATCH /launch/{id}
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#post-launchidcancel">
+<span class="md-ellipsis">
+      
+        POST /launch/{id}/cancel
       
     </span>
 </a>
@@ -907,6 +982,24 @@
 <span class="md-ellipsis">
       
         GET /launch/{id}/genesis/hash
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#post-launchidcommittee">
+<span class="md-ellipsis">
+      
+        POST /launch/{id}/committee
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#get-launchiddashboard">
+<span class="md-ellipsis">
+      
+        GET /launch/{id}/dashboard
       
     </span>
 </a>
@@ -1036,6 +1129,15 @@
 <span class="md-ellipsis">
       
         POST /launch/{id}/ready
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#get-launchidaudit">
+<span class="md-ellipsis">
+      
+        GET /launch/{id}/audit
       
     </span>
 </a>
@@ -1182,7 +1284,7 @@
 <h2 id="authentication">Authentication<a class="headerlink" href="#authentication" title="Permanent link">¶</a></h2>
 <p>All coordinators and validators authenticate via a two-step secp256k1 challenge–response. The public key must be provided explicitly — bech32 addresses are hashes and the server cannot recover the public key from them.</p>
 <h3 id="post-authchallenge"><code>POST /auth/challenge</code><a class="headerlink" href="#post-authchallenge" title="Permanent link">¶</a></h3>
-<p>Request a short-lived challenge nonce for the given operator address. Rate-limited to 10 requests per IP per minute.</p>
+<p>Request a short-lived challenge nonce for the given operator address. Rate-limited to 10 requests per IP per minute and 5 requests per operator address per 5 minutes.</p>
 <p><strong>Request body:</strong>
 <div class="highlight"><pre><span></span><code><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div></p>
@@ -1208,6 +1310,8 @@
 <p>Return the operator address and expiry of the current session token. Requires <code>Bearer</code> token.</p>
 <h3 id="delete-authsession"><code>DELETE /auth/session</code><a class="headerlink" href="#delete-authsession" title="Permanent link">¶</a></h3>
 <p>Revoke the current session. Requires <code>Bearer</code> token.</p>
+<h3 id="delete-authsessionsall"><code>DELETE /auth/sessions/all</code><a class="headerlink" href="#delete-authsessionsall" title="Permanent link">¶</a></h3>
+<p>Revoke all active sessions for the currently authenticated operator address. Requires <code>Bearer</code> token. Useful for signing out of all devices at once.</p>
 <hr/>
 <h2 id="launches">Launches<a class="headerlink" href="#launches" title="Permanent link">¶</a></h2>
 <h3 id="post-launch"><code>POST /launch</code><a class="headerlink" href="#post-launch" title="Permanent link">¶</a></h3>
@@ -1243,7 +1347,7 @@
 <a href="#__codelineno-4-27" id="__codelineno-4-27" name="__codelineno-4-27"></a><span class="p">}</span>
 </code></pre></div></p>
 <p><strong>Response:</strong> <code>201</code> with the created launch object.</p>
-<h3 id="get-launch"><code>GET /launch</code><a class="headerlink" href="#get-launch" title="Permanent link">¶</a></h3>
+<h3 id="get-launches"><code>GET /launches</code><a class="headerlink" href="#get-launches" title="Permanent link">¶</a></h3>
 <p>List launches visible to the authenticated caller. Paginated (<code>?page=1&amp;per_page=20</code>). Supports filtering by status.</p>
 <h3 id="get-launchid"><code>GET /launch/{id}</code><a class="headerlink" href="#get-launchid" title="Permanent link">¶</a></h3>
 <p>Get a single launch by ID.</p>
@@ -1259,6 +1363,9 @@
 </code></pre></div></p>
 <h3 id="patch-launchid"><code>PATCH /launch/{id}</code><a class="headerlink" href="#patch-launchid" title="Permanent link">¶</a></h3>
 <p>Update mutable fields on a launch. Patchable fields: <code>chain_name</code>, <code>binary_version</code>, <code>binary_sha256</code>, <code>repo_url</code>, <code>repo_commit</code>, <code>genesis_time</code>, <code>min_validator_count</code>, <code>visibility</code>, <code>allowlist</code>, <code>monitor_rpc_url</code>.</p>
+<h3 id="post-launchidcancel"><code>POST /launch/{id}/cancel</code><a class="headerlink" href="#post-launchidcancel" title="Permanent link">¶</a></h3>
+<p>Cancel the launch from any non-terminal state (<code>DRAFT</code>, <code>PUBLISHED</code>, <code>WINDOW_OPEN</code>, <code>WINDOW_CLOSED</code>, <code>GENESIS_READY</code>). Lead coordinator only. No request body.</p>
+<p><strong>Response:</strong> <code>204 No Content</code>.</p>
 <h3 id="post-launchidopen-window"><code>POST /launch/{id}/open-window</code><a class="headerlink" href="#post-launchidopen-window" title="Permanent link">¶</a></h3>
 <p>Open the application window (<code>PUBLISHED</code> → <code>WINDOW_OPEN</code>). Lead coordinator only. No request body.</p>
 <h3 id="post-launchidgenesis"><code>POST /launch/{id}/genesis</code><a class="headerlink" href="#post-launchidgenesis" title="Permanent link">¶</a></h3>
@@ -1273,14 +1380,34 @@
 <a href="#__codelineno-6-3" id="__codelineno-6-3" name="__codelineno-6-3"></a><span class="w">  </span><span class="nt">"final_sha256"</span><span class="p">:</span><span class="w">   </span><span class="s2">"&lt;hex&gt;"</span>
 <a href="#__codelineno-6-4" id="__codelineno-6-4" name="__codelineno-6-4"></a><span class="p">}</span>
 </code></pre></div></p>
+<h3 id="post-launchidcommittee"><code>POST /launch/{id}/committee</code><a class="headerlink" href="#post-launchidcommittee" title="Permanent link">¶</a></h3>
+<p>Set or replace the committee on a <code>DRAFT</code> launch. The request body has the same shape as the embedded <code>committee</code> field in <code>POST /launch</code>. The <code>creation_signature</code> must be a secp256k1 signature by the lead over the canonical JSON of the committee payload.</p>
+<h3 id="get-launchiddashboard"><code>GET /launch/{id}/dashboard</code><a class="headerlink" href="#get-launchiddashboard" title="Permanent link">¶</a></h3>
+<p>Return the readiness dashboard for a launch: the list of approved validators and their readiness confirmation status.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a><span class="p">{</span>
+<a href="#__codelineno-7-2" id="__codelineno-7-2" name="__codelineno-7-2"></a><span class="w">  </span><span class="nt">"validators"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a href="#__codelineno-7-3" id="__codelineno-7-3" name="__codelineno-7-3"></a><span class="w">    </span><span class="p">{</span>
+<a href="#__codelineno-7-4" id="__codelineno-7-4" name="__codelineno-7-4"></a><span class="w">      </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span>
+<a href="#__codelineno-7-5" id="__codelineno-7-5" name="__codelineno-7-5"></a><span class="w">      </span><span class="nt">"join_request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-7-6" id="__codelineno-7-6" name="__codelineno-7-6"></a><span class="w">      </span><span class="nt">"peer_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;node-id&gt;@host:26656"</span><span class="p">,</span>
+<a href="#__codelineno-7-7" id="__codelineno-7-7" name="__codelineno-7-7"></a><span class="w">      </span><span class="nt">"readiness"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-7-8" id="__codelineno-7-8" name="__codelineno-7-8"></a><span class="w">        </span><span class="nt">"confirmed"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a href="#__codelineno-7-9" id="__codelineno-7-9" name="__codelineno-7-9"></a><span class="w">        </span><span class="nt">"genesis_hash_confirmed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;sha256 hex&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-7-10" id="__codelineno-7-10" name="__codelineno-7-10"></a><span class="w">        </span><span class="nt">"binary_hash_confirmed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;sha256 hex&gt;"</span>
+<a href="#__codelineno-7-11" id="__codelineno-7-11" name="__codelineno-7-11"></a><span class="w">      </span><span class="p">}</span>
+<a href="#__codelineno-7-12" id="__codelineno-7-12" name="__codelineno-7-12"></a><span class="w">    </span><span class="p">}</span>
+<a href="#__codelineno-7-13" id="__codelineno-7-13" name="__codelineno-7-13"></a><span class="w">  </span><span class="p">]</span>
+<a href="#__codelineno-7-14" id="__codelineno-7-14" name="__codelineno-7-14"></a><span class="p">}</span>
+</code></pre></div></p>
 <h3 id="get-launchidgentxs"><code>GET /launch/{id}/gentxs</code><a class="headerlink" href="#get-launchidgentxs" title="Permanent link">¶</a></h3>
 <p>Return all approved gentxs for the launch. Used by the coordinator to assemble the final genesis.</p>
 <p><strong>Response:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-7-1" id="__codelineno-7-1" name="__codelineno-7-1"></a><span class="p">{</span>
-<a href="#__codelineno-7-2" id="__codelineno-7-2" name="__codelineno-7-2"></a><span class="w">  </span><span class="nt">"gentxs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a href="#__codelineno-7-3" id="__codelineno-7-3" name="__codelineno-7-3"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">"join_request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span><span class="w"> </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"gentx"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
-<a href="#__codelineno-7-4" id="__codelineno-7-4" name="__codelineno-7-4"></a><span class="w">  </span><span class="p">]</span>
-<a href="#__codelineno-7-5" id="__codelineno-7-5" name="__codelineno-7-5"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="p">{</span>
+<a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="w">  </span><span class="nt">"gentxs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a><span class="w">    </span><span class="p">{</span><span class="w"> </span><span class="nt">"join_request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span><span class="w"> </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span><span class="w"> </span><span class="nt">"gentx"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+<a href="#__codelineno-8-4" id="__codelineno-8-4" name="__codelineno-8-4"></a><span class="w">  </span><span class="p">]</span>
+<a href="#__codelineno-8-5" id="__codelineno-8-5" name="__codelineno-8-5"></a><span class="p">}</span>
 </code></pre></div></p>
 <h3 id="get-launchidpeers"><code>GET /launch/{id}/peers</code><a class="headerlink" href="#get-launchidpeers" title="Permanent link">¶</a></h3>
 <p>Return the peer addresses of all approved validators. Accepts <code>?format=text</code> to get a comma-separated string suitable for <code>persistent_peers</code> in CometBFT <code>config.toml</code>.</p>
@@ -1289,14 +1416,14 @@
 <h3 id="post-launchidproposal"><code>POST /launch/{id}/proposal</code><a class="headerlink" href="#post-launchidproposal" title="Permanent link">¶</a></h3>
 <p>Raise a new proposal. The proposer's signature counts as the first SIGN.</p>
 <p><strong>Request body:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-8-1" id="__codelineno-8-1" name="__codelineno-8-1"></a><span class="p">{</span>
-<a href="#__codelineno-8-2" id="__codelineno-8-2" name="__codelineno-8-2"></a><span class="w">  </span><span class="nt">"coordinator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="p">,</span>
-<a href="#__codelineno-8-3" id="__codelineno-8-3" name="__codelineno-8-3"></a><span class="w">  </span><span class="nt">"action_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"APPROVE_VALIDATOR"</span><span class="p">,</span>
-<a href="#__codelineno-8-4" id="__codelineno-8-4" name="__codelineno-8-4"></a><span class="w">  </span><span class="nt">"payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
-<a href="#__codelineno-8-5" id="__codelineno-8-5" name="__codelineno-8-5"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-8-6" id="__codelineno-8-6" name="__codelineno-8-6"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-8-7" id="__codelineno-8-7" name="__codelineno-8-7"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
-<a href="#__codelineno-8-8" id="__codelineno-8-8" name="__codelineno-8-8"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="p">{</span>
+<a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="w">  </span><span class="nt">"coordinator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="p">,</span>
+<a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a><span class="w">  </span><span class="nt">"action_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"APPROVE_VALIDATOR"</span><span class="p">,</span>
+<a href="#__codelineno-9-4" id="__codelineno-9-4" name="__codelineno-9-4"></a><span class="w">  </span><span class="nt">"payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-9-5" id="__codelineno-9-5" name="__codelineno-9-5"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-9-6" id="__codelineno-9-6" name="__codelineno-9-6"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-9-7" id="__codelineno-9-7" name="__codelineno-9-7"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
+<a href="#__codelineno-9-8" id="__codelineno-9-8" name="__codelineno-9-8"></a><span class="p">}</span>
 </code></pre></div></p>
 <p><strong>Response:</strong> <code>201</code> with the proposal object, including its current status. If M=1, the status will already be <code>EXECUTED</code>.</p>
 <h3 id="get-launchidproposal"><code>GET /launch/{id}/proposal</code><a class="headerlink" href="#get-launchidproposal" title="Permanent link">¶</a></h3>
@@ -1306,32 +1433,32 @@
 <h3 id="post-launchidproposalpidsign"><code>POST /launch/{id}/proposal/{pid}/sign</code><a class="headerlink" href="#post-launchidproposalpidsign" title="Permanent link">¶</a></h3>
 <p>Submit a SIGN or VETO decision on a pending proposal.</p>
 <p><strong>Request body:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-9-1" id="__codelineno-9-1" name="__codelineno-9-1"></a><span class="p">{</span>
-<a href="#__codelineno-9-2" id="__codelineno-9-2" name="__codelineno-9-2"></a><span class="w">  </span><span class="nt">"coordinator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="p">,</span>
-<a href="#__codelineno-9-3" id="__codelineno-9-3" name="__codelineno-9-3"></a><span class="w">  </span><span class="nt">"decision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SIGN"</span><span class="p">,</span>
-<a href="#__codelineno-9-4" id="__codelineno-9-4" name="__codelineno-9-4"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-9-5" id="__codelineno-9-5" name="__codelineno-9-5"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-9-6" id="__codelineno-9-6" name="__codelineno-9-6"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
-<a href="#__codelineno-9-7" id="__codelineno-9-7" name="__codelineno-9-7"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="p">{</span>
+<a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a><span class="w">  </span><span class="nt">"coordinator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="p">,</span>
+<a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a><span class="w">  </span><span class="nt">"decision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SIGN"</span><span class="p">,</span>
+<a href="#__codelineno-10-4" id="__codelineno-10-4" name="__codelineno-10-4"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-10-5" id="__codelineno-10-5" name="__codelineno-10-5"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-10-6" id="__codelineno-10-6" name="__codelineno-10-6"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
+<a href="#__codelineno-10-7" id="__codelineno-10-7" name="__codelineno-10-7"></a><span class="p">}</span>
 </code></pre></div></p>
 <hr/>
 <h2 id="join-requests">Join Requests<a class="headerlink" href="#join-requests" title="Permanent link">¶</a></h2>
 <h3 id="post-launchidjoin"><code>POST /launch/{id}/join</code><a class="headerlink" href="#post-launchidjoin" title="Permanent link">¶</a></h3>
 <p>Submit a validator join request. Launch must be in <code>WINDOW_OPEN</code> status.</p>
 <p><strong>Request body:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-10-1" id="__codelineno-10-1" name="__codelineno-10-1"></a><span class="p">{</span>
-<a href="#__codelineno-10-2" id="__codelineno-10-2" name="__codelineno-10-2"></a><span class="w">  </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span>
-<a href="#__codelineno-10-3" id="__codelineno-10-3" name="__codelineno-10-3"></a><span class="w">  </span><span class="nt">"chain_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mychain-1"</span><span class="p">,</span>
-<a href="#__codelineno-10-4" id="__codelineno-10-4" name="__codelineno-10-4"></a><span class="w">  </span><span class="nt">"consensus_pubkey"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 Ed25519 consensus pubkey&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-10-5" id="__codelineno-10-5" name="__codelineno-10-5"></a><span class="w">  </span><span class="nt">"gentx"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
-<a href="#__codelineno-10-6" id="__codelineno-10-6" name="__codelineno-10-6"></a><span class="w">  </span><span class="nt">"peer_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;node-id&gt;@host:26656"</span><span class="p">,</span>
-<a href="#__codelineno-10-7" id="__codelineno-10-7" name="__codelineno-10-7"></a><span class="w">  </span><span class="nt">"rpc_endpoint"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://host:26657"</span><span class="p">,</span>
-<a href="#__codelineno-10-8" id="__codelineno-10-8" name="__codelineno-10-8"></a><span class="w">  </span><span class="nt">"memo"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span>
-<a href="#__codelineno-10-9" id="__codelineno-10-9" name="__codelineno-10-9"></a><span class="w">  </span><span class="nt">"pubkey_b64"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 secp256k1 operator pubkey&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-10-10" id="__codelineno-10-10" name="__codelineno-10-10"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-10-11" id="__codelineno-10-11" name="__codelineno-10-11"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-10-12" id="__codelineno-10-12" name="__codelineno-10-12"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
-<a href="#__codelineno-10-13" id="__codelineno-10-13" name="__codelineno-10-13"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-11-1" id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="p">{</span>
+<a href="#__codelineno-11-2" id="__codelineno-11-2" name="__codelineno-11-2"></a><span class="w">  </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span>
+<a href="#__codelineno-11-3" id="__codelineno-11-3" name="__codelineno-11-3"></a><span class="w">  </span><span class="nt">"chain_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"mychain-1"</span><span class="p">,</span>
+<a href="#__codelineno-11-4" id="__codelineno-11-4" name="__codelineno-11-4"></a><span class="w">  </span><span class="nt">"consensus_pubkey"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 Ed25519 consensus pubkey&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-11-5" id="__codelineno-11-5" name="__codelineno-11-5"></a><span class="w">  </span><span class="nt">"gentx"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-11-6" id="__codelineno-11-6" name="__codelineno-11-6"></a><span class="w">  </span><span class="nt">"peer_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;node-id&gt;@host:26656"</span><span class="p">,</span>
+<a href="#__codelineno-11-7" id="__codelineno-11-7" name="__codelineno-11-7"></a><span class="w">  </span><span class="nt">"rpc_endpoint"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http://host:26657"</span><span class="p">,</span>
+<a href="#__codelineno-11-8" id="__codelineno-11-8" name="__codelineno-11-8"></a><span class="w">  </span><span class="nt">"memo"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span>
+<a href="#__codelineno-11-9" id="__codelineno-11-9" name="__codelineno-11-9"></a><span class="w">  </span><span class="nt">"pubkey_b64"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 secp256k1 operator pubkey&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-11-10" id="__codelineno-11-10" name="__codelineno-11-10"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-11-11" id="__codelineno-11-11" name="__codelineno-11-11"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-11-12" id="__codelineno-11-12" name="__codelineno-11-12"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
+<a href="#__codelineno-11-13" id="__codelineno-11-13" name="__codelineno-11-13"></a><span class="p">}</span>
 </code></pre></div></p>
 <p><strong>Response:</strong> <code>201</code> with the join request object.</p>
 <h3 id="get-launchidjoin"><code>GET /launch/{id}/join</code><a class="headerlink" href="#get-launchidjoin" title="Permanent link">¶</a></h3>
@@ -1343,22 +1470,37 @@
 <h3 id="post-launchidready"><code>POST /launch/{id}/ready</code><a class="headerlink" href="#post-launchidready" title="Permanent link">¶</a></h3>
 <p>Submit a validator readiness confirmation. The validator attests they have the correct genesis file and binary. Launch must be in <code>GENESIS_READY</code> status.</p>
 <p><strong>Request body:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-11-1" id="__codelineno-11-1" name="__codelineno-11-1"></a><span class="p">{</span>
-<a href="#__codelineno-11-2" id="__codelineno-11-2" name="__codelineno-11-2"></a><span class="w">  </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span>
-<a href="#__codelineno-11-3" id="__codelineno-11-3" name="__codelineno-11-3"></a><span class="w">  </span><span class="nt">"genesis_hash_confirmed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;sha256 hex&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-11-4" id="__codelineno-11-4" name="__codelineno-11-4"></a><span class="w">  </span><span class="nt">"binary_hash_confirmed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;sha256 hex&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-11-5" id="__codelineno-11-5" name="__codelineno-11-5"></a><span class="w">  </span><span class="nt">"pubkey_b64"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 secp256k1 operator pubkey&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-11-6" id="__codelineno-11-6" name="__codelineno-11-6"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-11-7" id="__codelineno-11-7" name="__codelineno-11-7"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
-<a href="#__codelineno-11-8" id="__codelineno-11-8" name="__codelineno-11-8"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
-<a href="#__codelineno-11-9" id="__codelineno-11-9" name="__codelineno-11-9"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-12-1" id="__codelineno-12-1" name="__codelineno-12-1"></a><span class="p">{</span>
+<a href="#__codelineno-12-2" id="__codelineno-12-2" name="__codelineno-12-2"></a><span class="w">  </span><span class="nt">"operator_address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1..."</span><span class="p">,</span>
+<a href="#__codelineno-12-3" id="__codelineno-12-3" name="__codelineno-12-3"></a><span class="w">  </span><span class="nt">"genesis_hash_confirmed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;sha256 hex&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-12-4" id="__codelineno-12-4" name="__codelineno-12-4"></a><span class="w">  </span><span class="nt">"binary_hash_confirmed"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;sha256 hex&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-12-5" id="__codelineno-12-5" name="__codelineno-12-5"></a><span class="w">  </span><span class="nt">"pubkey_b64"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 secp256k1 operator pubkey&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-12-6" id="__codelineno-12-6" name="__codelineno-12-6"></a><span class="w">  </span><span class="nt">"nonce"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-12-7" id="__codelineno-12-7" name="__codelineno-12-7"></a><span class="w">  </span><span class="nt">"timestamp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;RFC3339&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-12-8" id="__codelineno-12-8" name="__codelineno-12-8"></a><span class="w">  </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64&gt;"</span>
+<a href="#__codelineno-12-9" id="__codelineno-12-9" name="__codelineno-12-9"></a><span class="p">}</span>
+</code></pre></div></p>
+<h3 id="get-launchidaudit"><code>GET /launch/{id}/audit</code><a class="headerlink" href="#get-launchidaudit" title="Permanent link">¶</a></h3>
+<p>Return the audit log entries for a launch. No authentication required.</p>
+<p><strong>Response:</strong>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-13-1" id="__codelineno-13-1" name="__codelineno-13-1"></a><span class="p">{</span>
+<a href="#__codelineno-13-2" id="__codelineno-13-2" name="__codelineno-13-2"></a><span class="w">  </span><span class="nt">"entries"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a href="#__codelineno-13-3" id="__codelineno-13-3" name="__codelineno-13-3"></a><span class="w">    </span><span class="p">{</span>
+<a href="#__codelineno-13-4" id="__codelineno-13-4" name="__codelineno-13-4"></a><span class="w">      </span><span class="nt">"launch_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span><span class="p">,</span>
+<a href="#__codelineno-13-5" id="__codelineno-13-5" name="__codelineno-13-5"></a><span class="w">      </span><span class="nt">"event_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"LaunchCreated"</span><span class="p">,</span>
+<a href="#__codelineno-13-6" id="__codelineno-13-6" name="__codelineno-13-6"></a><span class="w">      </span><span class="nt">"occurred_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2026-05-01T00:00:00Z"</span><span class="p">,</span>
+<a href="#__codelineno-13-7" id="__codelineno-13-7" name="__codelineno-13-7"></a><span class="w">      </span><span class="nt">"payload"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">},</span>
+<a href="#__codelineno-13-8" id="__codelineno-13-8" name="__codelineno-13-8"></a><span class="w">      </span><span class="nt">"signature"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 Ed25519 sig&gt;"</span>
+<a href="#__codelineno-13-9" id="__codelineno-13-9" name="__codelineno-13-9"></a><span class="w">    </span><span class="p">}</span>
+<a href="#__codelineno-13-10" id="__codelineno-13-10" name="__codelineno-13-10"></a><span class="w">  </span><span class="p">]</span>
+<a href="#__codelineno-13-11" id="__codelineno-13-11" name="__codelineno-13-11"></a><span class="p">}</span>
 </code></pre></div></p>
 <hr/>
 <h2 id="audit">Audit<a class="headerlink" href="#audit" title="Permanent link">¶</a></h2>
 <h3 id="get-auditpubkey"><code>GET /audit/pubkey</code><a class="headerlink" href="#get-auditpubkey" title="Permanent link">¶</a></h3>
 <p>Return the server's Ed25519 public key for offline audit log signature verification. No authentication required.</p>
 <p><strong>Response:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-12-1" id="__codelineno-12-1" name="__codelineno-12-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"pub_key_b64"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 Ed25519 public key&gt;"</span><span class="w"> </span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-14-1" id="__codelineno-14-1" name="__codelineno-14-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"pub_key_b64"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;base64 Ed25519 public key&gt;"</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div></p>
 <hr/>
 <h2 id="admin">Admin<a class="headerlink" href="#admin" title="Permanent link">¶</a></h2>
@@ -1368,7 +1510,7 @@
 <h3 id="post-admincoordinators"><code>POST /admin/coordinators</code><a class="headerlink" href="#post-admincoordinators" title="Permanent link">¶</a></h3>
 <p>Add an address to the coordinator allowlist. Idempotent.</p>
 <p><strong>Request body:</strong>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-13-1" id="__codelineno-13-1" name="__codelineno-13-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="w"> </span><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-15-1" id="__codelineno-15-1" name="__codelineno-15-1"></a><span class="p">{</span><span class="w"> </span><span class="nt">"address"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cosmos1abc..."</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div></p>
 <h3 id="delete-admincoordinatorsaddress"><code>DELETE /admin/coordinators/{address}</code><a class="headerlink" href="#delete-admincoordinatorsaddress" title="Permanent link">¶</a></h3>
 <p>Remove an address from the coordinator allowlist.</p>
@@ -1385,13 +1527,13 @@
 <hr/>
 <h2 id="error-format">Error format<a class="headerlink" href="#error-format" title="Permanent link">¶</a></h2>
 <p>All errors use a consistent envelope:</p>
-<div class="highlight"><pre><span></span><code><a href="#__codelineno-14-1" id="__codelineno-14-1" name="__codelineno-14-1"></a><span class="p">{</span>
-<a href="#__codelineno-14-2" id="__codelineno-14-2" name="__codelineno-14-2"></a><span class="w">  </span><span class="nt">"error"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
-<a href="#__codelineno-14-3" id="__codelineno-14-3" name="__codelineno-14-3"></a><span class="w">    </span><span class="nt">"code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"VALIDATION_ERROR"</span><span class="p">,</span>
-<a href="#__codelineno-14-4" id="__codelineno-14-4" name="__codelineno-14-4"></a><span class="w">    </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"chain_id is required"</span><span class="p">,</span>
-<a href="#__codelineno-14-5" id="__codelineno-14-5" name="__codelineno-14-5"></a><span class="w">    </span><span class="nt">"request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span>
-<a href="#__codelineno-14-6" id="__codelineno-14-6" name="__codelineno-14-6"></a><span class="w">  </span><span class="p">}</span>
-<a href="#__codelineno-14-7" id="__codelineno-14-7" name="__codelineno-14-7"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a href="#__codelineno-16-1" id="__codelineno-16-1" name="__codelineno-16-1"></a><span class="p">{</span>
+<a href="#__codelineno-16-2" id="__codelineno-16-2" name="__codelineno-16-2"></a><span class="w">  </span><span class="nt">"error"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a href="#__codelineno-16-3" id="__codelineno-16-3" name="__codelineno-16-3"></a><span class="w">    </span><span class="nt">"code"</span><span class="p">:</span><span class="w"> </span><span class="s2">"VALIDATION_ERROR"</span><span class="p">,</span>
+<a href="#__codelineno-16-4" id="__codelineno-16-4" name="__codelineno-16-4"></a><span class="w">    </span><span class="nt">"message"</span><span class="p">:</span><span class="w"> </span><span class="s2">"chain_id is required"</span><span class="p">,</span>
+<a href="#__codelineno-16-5" id="__codelineno-16-5" name="__codelineno-16-5"></a><span class="w">    </span><span class="nt">"request_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;uuid&gt;"</span>
+<a href="#__codelineno-16-6" id="__codelineno-16-6" name="__codelineno-16-6"></a><span class="w">  </span><span class="p">}</span>
+<a href="#__codelineno-16-7" id="__codelineno-16-7" name="__codelineno-16-7"></a><span class="p">}</span>
 </code></pre></div>
 <p><code>request_id</code> is included in every response and can be used to correlate with server logs.</p>
 </article>

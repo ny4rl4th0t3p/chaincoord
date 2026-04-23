@@ -337,14 +337,42 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/docker/" class="md-nav__link">
+      <a href="../../getting-started/dev-environment/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Docker
+    Dev Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web App
   
 
     
@@ -1067,7 +1095,7 @@
 <p>Terminal state. The chain is live.</p>
 <hr />
 <h2 id="canceled">CANCELED<a class="headerlink" href="#canceled" title="Permanent link">&para;</a></h2>
-<p>Triggered by: Lead coordinator calls <code>DELETE /launch/:id</code> (or a dedicated cancel endpoint) from any non-terminal state.</p>
+<p>Triggered by: Lead coordinator calls <code>POST /launch/:id/cancel</code> from any non-terminal state.</p>
 <p>Terminal state. No further transitions are possible.</p>
 
 

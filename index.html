@@ -426,14 +426,42 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/docker/" class="md-nav__link">
+      <a href="getting-started/dev-environment/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Docker
+    Dev Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="getting-started/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web App
   
 
     
@@ -982,7 +1010,7 @@
 <table>
 <thead>
 <tr>
-<th>Binary</th>
+<th>Component</th>
 <th>Role</th>
 </tr>
 </thead>
@@ -990,6 +1018,10 @@
 <tr>
 <td><code>coordd</code></td>
 <td>The coordination server — HTTP API + background jobs</td>
+</tr>
+<tr>
+<td><code>web/app</code></td>
+<td>React + TypeScript web frontend — coordinators and validators use their Keplr/Leap wallet to authenticate and interact with the full launch lifecycle</td>
 </tr>
 <tr>
 <td><code>smoke-signer</code></td>
@@ -1000,6 +1032,7 @@
 <hr />
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
 <ul>
+<li><a href="getting-started/web-app/">Web App</a> — run the full stack with <code>make dev-up</code> and use it from a browser wallet</li>
 <li><a href="getting-started/quickstart/">Quickstart</a> — run <code>coordd</code> locally in five minutes</li>
 <li><a href="reference/setup/">Setup &amp; Configuration</a> — full configuration reference</li>
 <li><a href="concepts/overview/">Concepts</a> — deeper explanation of roles, proposals, and the lifecycle</li>

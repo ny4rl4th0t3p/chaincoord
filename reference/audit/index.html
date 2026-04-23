@@ -335,14 +335,42 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/docker/" class="md-nav__link">
+      <a href="../../getting-started/dev-environment/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Docker
+    Dev Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web App
   
 
     
@@ -999,12 +1027,28 @@
 </thead>
 <tbody>
 <tr>
+<td><code>LaunchCreated</code></td>
+<td>Launch created — committee and chain record set</td>
+</tr>
+<tr>
 <td><code>ChainRecordPublished</code></td>
 <td><code>PUBLISH_CHAIN_RECORD</code> proposal executed — launch moves to <code>PUBLISHED</code></td>
 </tr>
 <tr>
+<td><code>WindowOpened</code></td>
+<td>Lead coordinator calls <code>POST /launch/:id/open-window</code> — launch moves to <code>WINDOW_OPEN</code></td>
+</tr>
+<tr>
 <td><code>WindowClosed</code></td>
 <td><code>CLOSE_APPLICATION_WINDOW</code> proposal executed — launch moves to <code>WINDOW_CLOSED</code></td>
+</tr>
+<tr>
+<td><code>InitialGenesisUploaded</code></td>
+<td>Initial genesis file uploaded or registered via attestor URL</td>
+</tr>
+<tr>
+<td><code>FinalGenesisUploaded</code></td>
+<td>Final genesis file uploaded or registered via attestor URL</td>
 </tr>
 <tr>
 <td><code>GenesisPublished</code></td>
@@ -1030,11 +1074,15 @@
 <td><code>ValidatorRemoved</code></td>
 <td><code>REMOVE_APPROVED_VALIDATOR</code> proposal executed</td>
 </tr>
+<tr>
+<td><code>LaunchCancelled</code></td>
+<td>Lead coordinator cancels the launch</td>
+</tr>
 </tbody>
 </table>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Not all proposal action types emit audit events. Actions that mutate launch state directly without a domain event (e.g. <code>ADD_GENESIS_ACCOUNT</code>, <code>REPLACE_COMMITTEE_MEMBER</code>) are recorded in the database but do not produce audit log entries in the current implementation.</p>
+<p>Proposal actions that do not directly transition launch state (e.g. <code>ADD_GENESIS_ACCOUNT</code>, <code>REPLACE_COMMITTEE_MEMBER</code>) are recorded in the database but do not produce audit log entries in the current implementation.</p>
 </div>
 <hr />
 <h2 id="signature-verification">Signature verification<a class="headerlink" href="#signature-verification" title="Permanent link">&para;</a></h2>

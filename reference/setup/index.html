@@ -337,14 +337,42 @@
   
   
     <li class="md-nav__item">
-      <a href="../../getting-started/docker/" class="md-nav__link">
+      <a href="../../getting-started/dev-environment/" class="md-nav__link">
         
   
   
   <span class="md-ellipsis">
     
   
-    Docker
+    Dev Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/web-app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web App
   
 
     
@@ -924,6 +952,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#insecure_no_rate_limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        insecure_no_rate_limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#insecure_no_ssrf_check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1316,6 +1355,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#insecure_no_rate_limit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        insecure_no_rate_limit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#insecure_no_ssrf_check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1381,7 +1431,7 @@
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="nt">audit_log_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;./data/audit.jsonl&quot;</span>
 <a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="nt">genesis_path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;./data/genesis&quot;</span>
 <a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="nt">log_level</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;debug&quot;</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">cors_origins</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:5173&quot;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="nt">cors_origins</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:3000&quot;</span>
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="nt">audit_private_key_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;./data/audit_key&quot;</span>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="nt">jwt_private_key_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;./data/jwt_key&quot;</span>
 </code></pre></div>
@@ -1393,15 +1443,15 @@
 </code></pre></div>
 <p><code>log_level: debug</code> enables the human-readable <code>ConsoleWriter</code> output instead of JSON, which is easier to read during development.</p>
 <h3 id="cors">CORS<a class="headerlink" href="#cors" title="Permanent link">&para;</a></h3>
-<p>The validator web app (built with Vite) runs on <code>http://localhost:5173</code> by default. Set <code>cors_origins</code> to that origin so the browser allows cross-origin requests:</p>
+<p>The web app (Next.js) runs on <code>http://localhost:3000</code> by default. Set <code>cors_origins</code> to that origin so the browser allows cross-origin requests (required for the SSE stream, which connects directly from the browser):</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># config.yaml (dev)</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">cors_origins</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:5173&quot;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nt">cors_origins</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:3000&quot;</span>
 </code></pre></div>
 <p>Or via environment variable:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">COORD_CORS_ORIGINS</span><span class="o">=</span><span class="s2">&quot;http://localhost:5173&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">COORD_CORS_ORIGINS</span><span class="o">=</span><span class="s2">&quot;http://localhost:3000&quot;</span>
 </code></pre></div>
 <p>Multiple origins are comma-separated:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">COORD_CORS_ORIGINS</span><span class="o">=</span><span class="s2">&quot;http://localhost:5173,http://localhost:3000&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">COORD_CORS_ORIGINS</span><span class="o">=</span><span class="s2">&quot;http://localhost:3000,https://coord.example.com&quot;</span>
 </code></pre></div>
 <blockquote>
 <p><strong>Do not use <code>*</code> in development</strong> unless you have no other option — <code>AllowCredentials: true</code> is set on the server, and browsers will reject credentialed requests to a wildcard origin. Use the exact origin instead.</p>
@@ -1601,6 +1651,13 @@
 <td>No</td>
 </tr>
 <tr>
+<td><code>insecure_no_rate_limit</code></td>
+<td><code>COORD_INSECURE_NO_RATE_LIMIT</code></td>
+<td><code>--insecure-no-rate-limit</code></td>
+<td><code>false</code></td>
+<td>No</td>
+</tr>
+<tr>
 <td><code>insecure_no_ssrf_check</code></td>
 <td><code>COORD_INSECURE_NO_SSRF_CHECK</code></td>
 <td>—</td>
@@ -1643,6 +1700,8 @@
 <p>Paths to a PEM-encoded TLS certificate and private key. Both must be set together, or both left empty. When set, <code>coordd</code> calls <code>ListenAndServeTLS</code> and handles TLS termination itself (native TLS mode). See the <a href="#tls">TLS section</a> above for all deployment modes.</p>
 <h3 id="insecure_no_tls"><code>insecure_no_tls</code><a class="headerlink" href="#insecure_no_tls" title="Permanent link">&para;</a></h3>
 <p>Suppresses the startup warning when TLS is not configured and the listen address is not loopback. Set this when TLS is terminated upstream (load balancer, ingress, reverse proxy) and <code>coordd</code> binds plain HTTP on a private network interface. The Docker Compose file sets this automatically.</p>
+<h3 id="insecure_no_rate_limit"><code>insecure_no_rate_limit</code><a class="headerlink" href="#insecure_no_rate_limit" title="Permanent link">&para;</a></h3>
+<p>Disables all rate limiters: the HTTP per-IP middleware on <code>POST /auth/challenge</code> (10 req/IP/min) and validator write endpoints (60 req/IP/min), and the storage-layer per-operator limit on challenge issuance (5 req/operator/5 min). <strong>Only for automated test environments</strong> — do not enable in production.</p>
 <h3 id="insecure_no_ssrf_check"><code>insecure_no_ssrf_check</code><a class="headerlink" href="#insecure_no_ssrf_check" title="Permanent link">&para;</a></h3>
 <p>Disables DNS-resolution and private-IP validation on user-supplied RPC URLs (<code>monitor_rpc_url</code>) and genesis attestor URLs. Only enable this in trusted environments — for example, the smoke-test Docker network, where RPC hostnames are internal container names that would fail the SSRF check. <strong>Do not enable in production.</strong></p>
 <h3 id="log_level"><code>log_level</code><a class="headerlink" href="#log_level" title="Permanent link">&para;</a></h3>

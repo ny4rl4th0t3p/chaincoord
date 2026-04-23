@@ -11,7 +11,7 @@
       
       
       
-        <link rel="prev" href="../quickstart/">
+        <link rel="prev" href="../dev-environment/">
       
       
         <link rel="next" href="../smoke-test/">
@@ -25,7 +25,7 @@
     
     
       
-        <title>Docker - chaincoord</title>
+        <title>Web App - chaincoord</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#docker" class="md-skip">
+        <a href="#web-app" class="md-skip">
           Skip to content
         </a>
       
@@ -110,7 +110,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Docker
+              Web App
             
           </span>
         </div>
@@ -336,6 +336,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-environment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Environment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -355,7 +383,7 @@
   <span class="md-ellipsis">
     
   
-    Docker
+    Web App
   
 
     
@@ -373,7 +401,7 @@
   <span class="md-ellipsis">
     
   
-    Docker
+    Web App
   
 
     
@@ -399,10 +427,49 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#sign-in-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Sign-in paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sign-in paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coordinator-sign-in-header" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinator sign-in (header)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validator-sign-in-launch-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validator sign-in (launch detail)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinator-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinator flows
       
     </span>
   </a>
@@ -410,10 +477,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-is-structured" class="md-nav__link">
+  <a href="#validator-flows" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How it is structured
+        Validator flows
       
     </span>
   </a>
@@ -421,10 +488,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#keys-and-secrets" class="md-nav__link">
+  <a href="#audit-log" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Keys and secrets
+        Audit log
       
     </span>
   </a>
@@ -432,10 +499,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#environment-variables-used-by-the-coordd-container" class="md-nav__link">
+  <a href="#admin-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Environment variables used by the coordd container
+        Admin panel
       
     </span>
   </a>
@@ -443,10 +510,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-smoke-test" class="md-nav__link">
+  <a href="#session-management" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running the smoke test
+        Session management
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create launch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture notes
       
     </span>
   </a>
@@ -866,10 +955,49 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#prerequisites" class="md-nav__link">
+  <a href="#sign-in-paths" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prerequisites
+        Sign-in paths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sign-in paths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#coordinator-sign-in-header" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinator sign-in (header)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validator-sign-in-launch-detail" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validator sign-in (launch detail)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#coordinator-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Coordinator flows
       
     </span>
   </a>
@@ -877,10 +1005,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-is-structured" class="md-nav__link">
+  <a href="#validator-flows" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How it is structured
+        Validator flows
       
     </span>
   </a>
@@ -888,10 +1016,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#keys-and-secrets" class="md-nav__link">
+  <a href="#audit-log" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Keys and secrets
+        Audit log
       
     </span>
   </a>
@@ -899,10 +1027,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#environment-variables-used-by-the-coordd-container" class="md-nav__link">
+  <a href="#admin-panel" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Environment variables used by the coordd container
+        Admin panel
       
     </span>
   </a>
@@ -910,10 +1038,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-the-smoke-test" class="md-nav__link">
+  <a href="#session-management" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running the smoke test
+        Session management
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#create-launch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Create launch
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture notes
       
     </span>
   </a>
@@ -940,122 +1090,105 @@
   
 
 
-<h1 id="docker">Docker<a class="headerlink" href="#docker" title="Permanent link">&para;</a></h1>
-<p>The <code>docker/</code> directory contains a Docker Compose file that runs <code>coordd</code> alongside a smoke-test harness. It is primarily designed for the end-to-end smoke test, but the <code>coordd</code> service configuration is a useful reference for a containerised deployment.</p>
+<h1 id="web-app">Web App<a class="headerlink" href="#web-app" title="Permanent link">&para;</a></h1>
+<p>The <code>web/app/</code> directory is a React + TypeScript frontend that lets coordinators and validators interact with the full launch lifecycle from a browser wallet (Keplr or Leap) — no CLI required.</p>
+<p>For setup and infrastructure, see <a href="../dev-environment/">Dev Environment</a>.</p>
 <hr />
-<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<h2 id="sign-in-paths">Sign-in paths<a class="headerlink" href="#sign-in-paths" title="Permanent link">&para;</a></h2>
+<p>There are two distinct authentication paths depending on your role.</p>
+<h3 id="coordinator-sign-in-header">Coordinator sign-in (header)<a class="headerlink" href="#coordinator-sign-in-header" title="Permanent link">&para;</a></h3>
+<p>Coordinators authenticate using a chain already registered in their wallet. The header always shows a sign-in dropdown with three pre-registered choices: <strong>Cosmos Hub</strong>, <strong>Osmosis</strong>, and <strong>Juno</strong>.</p>
+<ol>
+<li>Select a chain from the dropdown (default: Cosmos Hub).</li>
+<li>Click <strong>Connect Wallet</strong> — the wallet modal opens.</li>
+<li>Once connected, click <strong>Sign In</strong> — the app requests a challenge and signs it with your key.</li>
+</ol>
+<p>The address you authenticate with becomes your operator identity for any launches you coordinate. <strong>You must use the same chain consistently within a single launch</strong> — the committee and all signed actions are tied to that address.</p>
+<h3 id="validator-sign-in-launch-detail">Validator sign-in (launch detail)<a class="headerlink" href="#validator-sign-in-launch-detail" title="Permanent link">&para;</a></h3>
+<p>Validators authenticate using the new chain being launched, which is not yet in their wallet. The launch detail page (<code>/launch/&lt;id&gt;</code>) guides them through three steps:</p>
+<ol>
+<li><strong>Add Chain to Wallet</strong> — fetches chain metadata (<code>chain_id</code>, <code>bech32_prefix</code>, <code>denom</code>) from <code>GET /launch/&lt;id&gt;/chain-hint</code> (unauthenticated) and calls <code>experimentalSuggestChain</code> on the wallet extension. This step derives the validator's operator address on the new chain.</li>
+<li><strong>Connect Wallet</strong> — select the newly registered chain account.</li>
+<li><strong>Sign In</strong> — sign a challenge to obtain a JWT session.</li>
+</ol>
+<p>Validators who visit a launch URL for the first time will see a choice: <strong>Coordinator or returning user</strong> (sign in via the header) or <strong>Join as Validator</strong> (start the per-launch flow above).</p>
+<hr />
+<h2 id="coordinator-flows">Coordinator flows<a class="headerlink" href="#coordinator-flows" title="Permanent link">&para;</a></h2>
+<p>After signing in, coordinators whose address appears in the launch committee see the coordinator panel.</p>
+<p><strong>Join request queue</strong> — review pending validator applications and raise approve or reject proposals for each.</p>
+<p><strong>Proposal list</strong> — sign or veto open proposals. A proposal executes automatically once M signatures are collected; one veto kills it immediately.</p>
+<p><strong>Coordinator actions</strong> — available depending on launch status:</p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>When available</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Open application window</td>
+<td>Status <code>PUBLISHED</code></td>
+</tr>
+<tr>
+<td>Upload genesis</td>
+<td>Any pre-<code>LAUNCHED</code> status</td>
+</tr>
+<tr>
+<td>Set monitor RPC</td>
+<td>Any pre-<code>LAUNCHED</code> status</td>
+</tr>
+<tr>
+<td>Download gentxs</td>
+<td>Any status (downloads all approved validator gentxs as JSON)</td>
+</tr>
+<tr>
+<td>Replace committee</td>
+<td>Status <code>DRAFT</code> only; lead coordinator only</td>
+</tr>
+<tr>
+<td>Cancel launch</td>
+<td>Any non-terminal status; lead coordinator only (two-step confirm)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="validator-flows">Validator flows<a class="headerlink" href="#validator-flows" title="Permanent link">&para;</a></h2>
+<p>After signing in via the per-launch path, validators see the validator panel.</p>
+<ol>
+<li><strong>Submit join request</strong> — fill in consensus public key, <code>gentx</code> (paste or file upload), peer address, optional RPC endpoint and memo. Signed with the wallet before submission.</li>
+<li><strong>Track approval</strong> — the join request status panel polls every 15 seconds and shows pending / approved / rejected state with any rejection reason.</li>
+<li><strong>Download genesis</strong> — once a final genesis is published, download it. The SHA-256 is verified in-browser via the Web Crypto API.</li>
+<li><strong>Confirm readiness</strong> — submit a readiness confirmation with the genesis hash and optional binary hash.</li>
+<li><strong>Peer list</strong> — once approved, load the <code>persistent_peers</code> string for all approved validators (one click to copy). Paste this into your node's <code>config.toml</code>.</li>
+</ol>
+<hr />
+<h2 id="audit-log">Audit log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h2>
+<p>Each launch detail page includes a collapsible <strong>Audit Log</strong> section. Clicking "Load Audit Log" fetches all recorded events for that launch, shows the server's Ed25519 public key for offline verification, and lets you expand each entry to see its full payload.</p>
+<p>The audit log is also verifiable offline with <code>coordd audit verify</code>. See <a href="../../reference/audit/">Audit Log</a>.</p>
+<hr />
+<h2 id="admin-panel">Admin panel<a class="headerlink" href="#admin-panel" title="Permanent link">&para;</a></h2>
+<p>The admin panel (<code>/admin</code>) is accessible from the sidebar. It checks your JWT on load — if your address is not in <code>COORD_ADMIN_ADDRESSES</code> it shows a "not an admin" message.</p>
+<p>Admins can:
+- <strong>Coordinator allowlist</strong> — add or remove addresses that are permitted to create launches (when the server's <code>launch_policy</code> is <code>restricted</code>)
+- <strong>Session revocation</strong> — invalidate all sessions for a given operator address</p>
+<p>See <a href="../dev-environment/">Dev Environment</a> for how to set <code>COORD_ADMIN_ADDRESSES</code>.</p>
+<hr />
+<h2 id="session-management">Session management<a class="headerlink" href="#session-management" title="Permanent link">&para;</a></h2>
+<p><strong>Sign out</strong> — the Sign Out button in the header revokes only the current session token.</p>
+<p><strong>Revoke all sessions</strong> — a two-step "Revoke All Sessions" confirmation button (next to Sign Out on the launch detail page) calls <code>DELETE /auth/sessions/all</code>, invalidating every active session for your address across all devices.</p>
+<hr />
+<h2 id="create-launch">Create launch<a class="headerlink" href="#create-launch" title="Permanent link">&para;</a></h2>
+<p>Authenticated coordinators can create a new launch from the <strong>New Launch</strong> page (<code>/launch/new</code>) or via the sidebar link. The form covers the chain record, launch options (type, visibility, initial allowlist), and committee setup.</p>
+<p>The committee <code>creation_signature</code> is produced automatically: the app signs the canonical JSON of the committee payload with your wallet on submit.</p>
+<hr />
+<h2 id="architecture-notes">Architecture notes<a class="headerlink" href="#architecture-notes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Docker with Compose v2 (<code>docker compose</code>)</li>
-<li><code>make</code></li>
+<li>API calls are proxied through Next.js server-side rewrites — the browser never needs to know the backend address.</li>
+<li>SSE (<code>GET /launch/&lt;id&gt;/events</code>) connects directly from the browser to <code>http://localhost:8080</code>. This avoids buffering issues with streaming responses through the proxy.</li>
+<li>JWT tokens are stored in React state only — never in <code>localStorage</code> or cookies. Refreshing the page requires re-authentication.</li>
+<li>All signing uses <code>signArbitrary</code> (ADR-036 amino), compatible with the server's <code>Secp256k1Verifier</code>.</li>
 </ul>
-<hr />
-<h2 id="how-it-is-structured">How it is structured<a class="headerlink" href="#how-it-is-structured" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Service</th>
-<th>Role</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>coordd</code></td>
-<td>The coordination server, bound on <code>:8080</code></td>
-</tr>
-<tr>
-<td><code>val1</code>–<code>val4</code></td>
-<td>Four simulated Cosmos SDK validator nodes (<code>gaiad</code>)</td>
-</tr>
-<tr>
-<td><code>smoke-test</code></td>
-<td>Scripted client that drives the full launch protocol</td>
-</tr>
-</tbody>
-</table>
-<p>The <code>val*</code> containers use a shared volume (<code>gaia-shared</code>) to exchange gentx files and the assembled genesis. The <code>coordd</code> container persists its database, audit log, and genesis files in a separate volume (<code>coordd-data</code>).</p>
-<hr />
-<h2 id="keys-and-secrets">Keys and secrets<a class="headerlink" href="#keys-and-secrets" title="Permanent link">&para;</a></h2>
-<p><code>coordd</code> requires two Ed25519 keys. In the Compose setup they are mounted as <a href="https://docs.docker.com/compose/use-secrets/">Docker secrets</a> so they do not appear in environment variable listings or container inspection output.</p>
-<p>The <code>make smoke-test-secrets</code> target generates them if they do not already exist:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>make<span class="w"> </span>smoke-test-secrets
-</code></pre></div>
-<p>This creates <code>docker/secrets/audit_key</code> and <code>docker/secrets/jwt_key</code>, each a base64-encoded 32-byte seed.</p>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p>The <code>docker/secrets/</code> directory is intentionally excluded from version control. Never commit secret files.</p>
-</div>
-<hr />
-<h2 id="environment-variables-used-by-the-coordd-container">Environment variables used by the <code>coordd</code> container<a class="headerlink" href="#environment-variables-used-by-the-coordd-container" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Variable</th>
-<th>Value in Compose</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>COORD_LISTEN_ADDR</code></td>
-<td><code>:8080</code></td>
-<td>HTTP listen address</td>
-</tr>
-<tr>
-<td><code>COORD_DB_PATH</code></td>
-<td><code>/data/coord.db</code></td>
-<td>SQLite database path</td>
-</tr>
-<tr>
-<td><code>COORD_AUDIT_LOG_PATH</code></td>
-<td><code>/data/audit.jsonl</code></td>
-<td>Audit log path</td>
-</tr>
-<tr>
-<td><code>COORD_GENESIS_PATH</code></td>
-<td><code>/data/genesis</code></td>
-<td>Genesis file storage directory</td>
-</tr>
-<tr>
-<td><code>COORD_LOG_LEVEL</code></td>
-<td><code>info</code></td>
-<td>Log verbosity</td>
-</tr>
-<tr>
-<td><code>COORD_INSECURE_NO_TLS</code></td>
-<td><code>true</code></td>
-<td>Suppresses the TLS warning (TLS is terminated upstream in prod)</td>
-</tr>
-<tr>
-<td><code>COORD_INSECURE_NO_SSRF_CHECK</code></td>
-<td><code>true</code></td>
-<td>Disables SSRF check for internal Docker hostnames (<code>val*</code>)</td>
-</tr>
-<tr>
-<td><code>COORD_LAUNCH_POLICY</code></td>
-<td><code>open</code></td>
-<td>Any authenticated address may create a launch</td>
-</tr>
-<tr>
-<td><code>COORD_GENESIS_HOST_MODE</code></td>
-<td><code>true</code></td>
-<td>Accept raw genesis file uploads</td>
-</tr>
-<tr>
-<td><code>COORD_AUDIT_PRIVATE_KEY_FILE</code></td>
-<td><code>/run/secrets/audit_key</code></td>
-<td>Path to audit key secret</td>
-</tr>
-<tr>
-<td><code>COORD_JWT_PRIVATE_KEY_FILE</code></td>
-<td><code>/run/secrets/jwt_key</code></td>
-<td>Path to JWT key secret</td>
-</tr>
-</tbody>
-</table>
-<p>See <a href="../../reference/setup/">Setup &amp; Configuration</a> for the full reference.</p>
-<hr />
-<h2 id="running-the-smoke-test">Running the smoke test<a class="headerlink" href="#running-the-smoke-test" title="Permanent link">&para;</a></h2>
-<p>See <a href="../smoke-test/">Smoke Test</a>.</p>
 
 
 
