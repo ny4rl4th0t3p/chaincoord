@@ -397,7 +397,7 @@ function PeerListSection({ launchId, authFetch }: PeerListSectionProps) {
   return (
     <PanelCard title="Peer List">
       <Text fontSize="$xs" color="$textSecondary">
-        Persistent peers for all approved validators. Paste into your node's <Text as="span" fontFamily="monospace" fontSize="$xs">persistent_peers</Text> config.
+        Persistent peers for all approved validators. Paste into your node&apos;s <Text as="span" fontFamily="monospace" fontSize="$xs">persistent_peers</Text> config.
       </Text>
       {!peers && !isLoading && (
         <Button variant="outline" size="sm" onClick={load}>
